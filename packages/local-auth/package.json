@@ -1,0 +1,42 @@
+{
+  "name": "@dmfaster/local-auth",
+  "version": "0.1.0",
+  "description": "Shared secure local authentication for DM Faster agent clients.",
+  "license": "Apache-2.0",
+  "author": "DM Faster",
+  "homepage": "https://dmfaster.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eemelidevii/dmfaster-agents.git",
+    "directory": "packages/local-auth"
+  },
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test tests/*.test.ts",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "5.9.3"
+  }
+}

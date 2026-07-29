@@ -1,0 +1,114 @@
+name: Publish agent packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact version present in all four package manifests (for example, 0.1.0)
+        required: true
+        type: string
+      confirmation:
+        description: Type "publish @dmfaster packages VERSION" with the requested version
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-packages-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify and publish in dependency order
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: npm-packages
+      url: https://www.npmjs.com/org/dmfaster
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node and npm registry
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Guard version, source ref, and confirmation
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          const version = process.env.RELEASE_VERSION || "";
+          const confirmation = process.env.RELEASE_CONFIRMATION || "";
+          const expectedConfirmation = `publish @dmfaster packages ${version}`;
+          const packagePaths = [
+            "packages/local-auth/package.json",
+            "packages/sdk/package.json",
+            "packages/cli/package.json",
+            "packages/mcp-server/package.json",
+          ];
+
+          if (process.env.GITHUB_REF !== "refs/heads/main") {
+            throw new Error(`Agent packages may only publish from main; received ${process.env.GITHUB_REF}.`);
+          }
+          if (process.env.REPOSITORY_VISIBILITY !== "public") {
+            throw new Error(
+              "npm provenance requires a public GitHub source repository. Use an approved public-source release repository before publishing.",
+            );
+          }
+          if (process.env.RELEASE_REPOSITORY !== "eemelidevii/dmfaster-agents") {
+            throw new Error(
+              `Agent packages may only publish from eemelidevii/dmfaster-agents; received ${process.env.RELEASE_REPOSITORY}.`,
+            );
+          }
+          if (!/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(version)) {
+            throw new Error(`Release version must be a stable semantic version: ${version || "(empty)"}`);
+          }
+          if (confirmation !== expectedConfirmation) {
+            throw new Error(`Confirmation must exactly match: ${expectedConfirmation}`);
+          }
+          for (const packagePath of packagePaths) {
+            const packageJson = JSON.parse(readFileSync(packagePath, "utf8"));
+            if (packageJson.version !== version) {
+              throw new Error(`${packageJson.name} is ${packageJson.version}, not requested ${version}.`);
+            }
+            if (Object.hasOwn(packageJson, "private")) {
+              throw new Error(`${packageJson.name} still contains the private field.`);
+            }
+            if (packageJson.publishConfig?.access !== "public" || packageJson.publishConfig?.provenance !== true) {
+              throw new Error(`${packageJson.name} is not configured for public provenance publishing.`);
+            }
+          }
+          NODE
+
+      - name: Use a trusted-publishing-capable npm CLI
+        run: npm install --global npm@11.11.0
+
+      - name: Install exact workspace dependencies
+        run: npm ci
+
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev
+
+      - name: Verify contracts, package contents, and clean install
+        run: npm run check:agents
+
+      - name: Publish exact artifacts in dependency order
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          GITHUB_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
+          DMFASTER_AGENT_RELEASE_WORKFLOW: agent-packages-release.yml
+        run: npm run release:agent-packages

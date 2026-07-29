@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "dmfaster": {
+      "command": "npx",
+      "args": [
+        "--yes",
+        "@dmfaster/mcp-server@0.1.0"
+      ]
+    }
+  }
+}

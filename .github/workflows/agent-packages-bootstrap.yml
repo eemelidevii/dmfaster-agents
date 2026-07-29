@@ -1,0 +1,163 @@
+name: Bootstrap agent packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact version present in all four package manifests
+        required: true
+        type: string
+      confirmation:
+        description: Type "bootstrap @dmfaster packages VERSION"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-packages-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify and bootstrap with provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: npm-bootstrap
+      url: https://www.npmjs.com/org/dmfaster
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Guard version, source ref, and confirmation
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          const version = process.env.RELEASE_VERSION || "";
+          const confirmation = process.env.RELEASE_CONFIRMATION || "";
+          const expectedConfirmation = `bootstrap @dmfaster packages ${version}`;
+          const packagePaths = [
+            "packages/local-auth/package.json",
+            "packages/sdk/package.json",
+            "packages/cli/package.json",
+            "packages/mcp-server/package.json",
+          ];
+
+          if (process.env.GITHUB_REF !== "refs/heads/main") {
+            throw new Error(`Bootstrap may only run from main; received ${process.env.GITHUB_REF}.`);
+          }
+          if (process.env.REPOSITORY_VISIBILITY !== "public") {
+            throw new Error("npm provenance requires a public GitHub source repository.");
+          }
+          if (process.env.RELEASE_REPOSITORY !== "eemelidevii/dmfaster-agents") {
+            throw new Error(
+              `Bootstrap may only run from eemelidevii/dmfaster-agents; received ${process.env.RELEASE_REPOSITORY}.`,
+            );
+          }
+          if (!/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(version)) {
+            throw new Error(`Release version must be stable semantic version: ${version || "(empty)"}.`);
+          }
+          if (confirmation !== expectedConfirmation) {
+            throw new Error(`Confirmation must exactly match: ${expectedConfirmation}`);
+          }
+          for (const packagePath of packagePaths) {
+            const packageJson = JSON.parse(readFileSync(packagePath, "utf8"));
+            if (packageJson.version !== version) {
+              throw new Error(`${packageJson.name} is ${packageJson.version}, not ${version}.`);
+            }
+            if (packageJson.license !== "Apache-2.0") {
+              throw new Error(`${packageJson.name} must be Apache-2.0.`);
+            }
+            if (
+              packageJson.repository?.url
+              !== "git+https://github.com/eemelidevii/dmfaster-agents.git"
+            ) {
+              throw new Error(`${packageJson.name} has unexpected repository metadata.`);
+            }
+          }
+          NODE
+
+      - name: Use a provenance-capable npm CLI
+        run: npm install --global npm@11.11.0
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev
+
+      - name: Verify contracts, artifacts, and clean install
+        run: npm run check:agents
+
+      - name: Verify temporary npm credential is available
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "The npm-bootstrap environment is missing its temporary NPM_TOKEN secret."
+            exit 1
+          fi
+          npm whoami
+
+      - name: Publish exact artifacts in dependency order
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          GITHUB_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
+          DMFASTER_AGENT_BOOTSTRAP_WORKFLOW: agent-packages-bootstrap.yml
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm run release:agent-packages
+
+      - name: Verify registry integrity and provenance
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { spawnSync } from "node:child_process";
+          import { setTimeout as delay } from "node:timers/promises";
+
+          const version = process.env.RELEASE_VERSION;
+          const packages = [
+            "@dmfaster/local-auth",
+            "@dmfaster/sdk",
+            "@dmfaster/cli",
+            "@dmfaster/mcp-server",
+          ];
+
+          for (const name of packages) {
+            let verified = false;
+            for (let attempt = 1; attempt <= 12; attempt += 1) {
+              const result = spawnSync(
+                "npm",
+                ["view", `${name}@${version}`, "dist", "--json"],
+                { encoding: "utf8" },
+              );
+              if (result.status === 0) {
+                const distribution = JSON.parse(result.stdout);
+                if (
+                  typeof distribution?.integrity === "string"
+                  && distribution.integrity.startsWith("sha512-")
+                  && distribution?.attestations?.provenance?.predicateType
+                    === "https://slsa.dev/provenance/v1"
+                ) {
+                  verified = true;
+                  break;
+                }
+              }
+              await delay(5_000);
+            }
+            if (!verified) {
+              throw new Error(`${name}@${version} lacks verified integrity or provenance.`);
+            }
+          }
+          NODE

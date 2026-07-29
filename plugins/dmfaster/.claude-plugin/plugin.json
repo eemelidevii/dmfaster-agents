@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "dmfaster",
+  "version": "0.1.0",
+  "description": "Inspect DM Faster through seven official read-only sales workspace tools.",
+  "author": {
+    "name": "DM Faster",
+    "url": "https://dmfaster.com"
+  },
+  "homepage": "https://dmfaster.com/docs/agents",
+  "repository": "https://github.com/eemelidevii/dmfaster-agents",
+  "license": "Apache-2.0",
+  "keywords": [
+    "sales",
+    "outreach",
+    "campaigns",
+    "mcp",
+    "agent"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

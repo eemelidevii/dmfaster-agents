@@ -1,0 +1,39 @@
+{
+  "name": "dmfaster-agents",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Public read-only agent interfaces for DM Faster.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eemelidevii/dmfaster-agents.git"
+  },
+  "workspaces": [
+    "packages/local-auth",
+    "packages/sdk",
+    "packages/cli",
+    "packages/mcp-server"
+  ],
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "generate:agent-api": "node tools/generate-public-api.mjs",
+    "check:agent-api": "node tools/generate-public-api.mjs --check",
+    "check:agent-skill": "node tools/check-agent-skill.mjs",
+    "check:agent-plugin": "node tools/check-agent-plugin.mjs",
+    "build:agents": "node tools/clean-agent-build-output.mjs && npm run build --workspaces --if-present",
+    "check:agent-packages": "node tools/check-agent-package-contents.mjs",
+    "test:agent-packages:install": "node tools/test-agent-package-install.mjs",
+    "release:agent-packages": "node tools/publish-agent-packages.mjs",
+    "typecheck:agents": "npm run typecheck --workspaces --if-present",
+    "test:agents": "node --test tools/public-api-contract.test.mjs tools/agent-package-boundaries.test.mjs tools/publish-agent-packages.test.mjs && npm run test --workspaces --if-present",
+    "check:agents": "npm run check:agent-api && npm run check:agent-skill && npm run check:agent-plugin && npm run build:agents && npm run check:agent-packages && npm run test:agent-packages:install && npm run typecheck:agents && npm run test:agents"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}

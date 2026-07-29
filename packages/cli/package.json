@@ -1,0 +1,43 @@
+{
+  "name": "@dmfaster/cli",
+  "version": "0.1.0",
+  "description": "Read-only command-line interface for DM Faster.",
+  "license": "Apache-2.0",
+  "author": "DM Faster",
+  "homepage": "https://dmfaster.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eemelidevii/dmfaster-agents.git",
+    "directory": "packages/cli"
+  },
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "bin": {
+    "dmfaster": "./dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test tests/*.test.ts",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "@dmfaster/local-auth": "0.1.0",
+    "@dmfaster/sdk": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "5.9.3"
+  }
+}

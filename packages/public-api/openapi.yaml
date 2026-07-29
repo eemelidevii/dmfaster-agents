@@ -1,0 +1,1423 @@
+openapi: 3.1.0
+info:
+  title: DM Faster Agent API
+  version: 1.0.0
+  description: |
+    The stable, read-only API used by DM Faster agent clients. Every token is bound
+    to one workspace. This version can inspect state but cannot create, modify,
+    launch, send, schedule, or delete anything.
+  license:
+    name: Proprietary
+servers:
+  - url: https://app.dmfaster.com
+    description: DM Faster application and Agent API.
+tags:
+  - name: Agent authentication
+    description: Browser-approved login and revocation for local agent clients.
+  - name: Agent tools
+    description: Read-only, bounded tools backed by authoritative DM Faster services.
+security:
+  - bearerAuth: []
+x-dmfaster-scopes:
+  "workspace:read": Read workspace summary and aggregate worker state.
+  "campaigns:read": Read campaign metadata and performance.
+  "sending:read": Read browser-worker and sending health.
+  "inbox:read": Read reply-attention data from the unified inbox.
+  "pipeline:read": Read pipeline summaries and company outreach history.
+paths:
+  /api/v1/agent/auth/device:
+    post:
+      tags: [Agent authentication]
+      operationId: startAgentDeviceAuthorization
+      summary: Start browser-approved agent login
+      description: |
+        Creates a short-lived device authorization protected by PKCE S256. The
+        returned device code and locally generated verifier must remain inside
+        the client; only the secret-free verification URL is opened in the browser.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentDeviceAuthorizationInput"
+      responses:
+        "201":
+          description: A five-minute browser authorization was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentDeviceAuthorizationResult"
+        "400": { $ref: "#/components/responses/AuthBadRequest" }
+        "429": { $ref: "#/components/responses/AuthTooManyRequests" }
+        "503": { $ref: "#/components/responses/AuthServiceUnavailable" }
+
+  /api/v1/agent/auth/token:
+    post:
+      tags: [Agent authentication]
+      operationId: exchangeAgentDeviceAuthorization
+      summary: Poll and exchange an approved agent login
+      description: |
+        Poll no faster than the interval returned by the start endpoint. An
+        approved authorization can be exchanged exactly once.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentDeviceTokenInput"
+      responses:
+        "200":
+          description: The browser authorization was approved and exchanged.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentDeviceTokenResult"
+        "400": { $ref: "#/components/responses/AuthBadRequest" }
+        "403": { $ref: "#/components/responses/AuthForbidden" }
+        "409": { $ref: "#/components/responses/AuthConflict" }
+        "428": { $ref: "#/components/responses/AuthPending" }
+        "429": { $ref: "#/components/responses/AuthTooManyRequests" }
+        "503": { $ref: "#/components/responses/AuthServiceUnavailable" }
+
+  /api/v1/agent/auth/status:
+    get:
+      tags: [Agent authentication]
+      operationId: getAgentAuthenticationStatus
+      summary: Verify the current agent login
+      responses:
+        "200":
+          description: The bearer credential is active and its workspace remains accessible.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentAuthenticationStatus"
+        "401": { $ref: "#/components/responses/AuthUnauthorized" }
+        "403": { $ref: "#/components/responses/AuthForbidden" }
+        "429": { $ref: "#/components/responses/AuthTooManyRequests" }
+        "503": { $ref: "#/components/responses/AuthServiceUnavailable" }
+
+  /api/v1/agent/auth/revoke:
+    post:
+      tags: [Agent authentication]
+      operationId: revokeAgentAuthentication
+      summary: Revoke the current agent login
+      responses:
+        "200":
+          description: The bearer credential was revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentAuthenticationRevoked"
+        "401": { $ref: "#/components/responses/AuthUnauthorized" }
+        "429": { $ref: "#/components/responses/AuthTooManyRequests" }
+        "503": { $ref: "#/components/responses/AuthServiceUnavailable" }
+
+  /api/v1/agent/tools/workspace.briefing:
+    post:
+      tags: [Agent tools]
+      operationId: workspaceBriefing
+      summary: Inspect the workspace briefing
+      description: Returns an authoritative workspace, campaign, and sending summary. Read-only.
+      x-dmfaster-effect: read
+      x-dmfaster-required-scopes: ["workspace:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceBriefingInput"
+      responses:
+        "200":
+          description: Workspace briefing.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceBriefingResult"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/campaigns.list:
+    post:
+      tags: [Agent tools]
+      operationId: campaignsList
+      summary: List campaigns
+      description: Lists the most recently updated campaigns, optionally filtered by status. Read-only.
+      x-dmfaster-effect: read
+      x-dmfaster-required-scopes: ["campaigns:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignsListInput"
+      responses:
+        "200":
+          description: Campaign list.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignsListResult"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/campaign.inspect:
+    post:
+      tags: [Agent tools]
+      operationId: campaignInspect
+      summary: Inspect campaign performance
+      description: |
+        Returns execution and pipeline facts for a campaign. When campaignId is
+        omitted, the selected, active, or most recent campaign is used. Read-only.
+      x-dmfaster-effect: read
+      x-dmfaster-required-scopes: ["campaigns:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignInspectInput"
+      responses:
+        "200":
+          description: Campaign performance.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignInspectResult"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/sending.inspect:
+    post:
+      tags: [Agent tools]
+      operationId: sendingInspect
+      summary: Inspect sending health
+      description: |
+        Returns campaign, queue, failure, and browser-worker health. When campaignId
+        is omitted, the selected, active, or most recent campaign is used. Read-only.
+      x-dmfaster-effect: read
+      x-dmfaster-required-scopes: ["sending:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendingInspectInput"
+      responses:
+        "200":
+          description: Sending health.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendingInspectResult"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/replies.list:
+    post:
+      tags: [Agent tools]
+      operationId: repliesList
+      summary: List priority replies
+      description: |
+        Returns bounded reply-attention records from the pipeline. When campaignId
+        is omitted, the selected, active, or most recent campaign is used. Read-only.
+      x-dmfaster-effect: read
+      x-dmfaster-required-scopes: ["inbox:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RepliesListInput"
+      responses:
+        "200":
+          description: Priority replies.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepliesListResult"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/pipeline.inspect:
+    post:
+      tags: [Agent tools]
+      operationId: pipelineInspect
+      summary: Inspect campaign pipeline
+      description: |
+        Returns pipeline counts and a bounded lead sample. When campaignId is
+        omitted, the selected, active, or most recent campaign is used. Read-only.
+      x-dmfaster-effect: read
+      x-dmfaster-required-scopes: ["pipeline:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PipelineInspectInput"
+      responses:
+        "200":
+          description: Pipeline summary.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineInspectResult"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/company.timeline:
+    post:
+      tags: [Agent tools]
+      operationId: companyTimeline
+      summary: Inspect a company outreach timeline
+      description: Returns up to 30 recorded outreach and pipeline events for one company. Read-only.
+      x-dmfaster-effect: read
+      x-dmfaster-required-scopes: ["campaigns:read", "pipeline:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyTimelineInput"
+      responses:
+        "200":
+          description: Company outreach timeline.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyTimelineResult"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: DM Faster agent token
+      description: A revocable, scoped token bound to one DM Faster workspace.
+
+  headers:
+    CacheControl:
+      description: Agent tool responses are not cached.
+      schema:
+        type: string
+        const: no-store
+    RequestId:
+      description: Stable identifier for support, audit, and log correlation.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+
+  responses:
+    AuthBadRequest:
+      description: The authorization request or grant is invalid, expired, or already consumed.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentAuthErrorResponse" }
+    AuthUnauthorized:
+      description: The bearer credential is missing, malformed, expired, or revoked.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentAuthErrorResponse" }
+    AuthForbidden:
+      description: Browser approval was denied or workspace access is no longer available.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentAuthErrorResponse" }
+    AuthConflict:
+      description: The account cannot create another active agent credential.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentAuthErrorResponse" }
+    AuthPending:
+      description: Browser authorization is still pending.
+      headers:
+        Retry-After:
+          description: Minimum seconds before polling again.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentAuthErrorResponse" }
+    AuthTooManyRequests:
+      description: The authorization client is polling too quickly or exceeded an authentication limit.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentAuthErrorResponse" }
+    AuthServiceUnavailable:
+      description: Agent authentication is temporarily unavailable.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentAuthErrorResponse" }
+    BadRequest:
+      description: The request body is invalid or exceeds a documented bound.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error:
+              code: invalid_request
+              message: The agent tool input is invalid.
+              retryable: false
+              requestId: req_01JEXAMPLE
+    Unauthorized:
+      description: The bearer token is missing, malformed, expired, or revoked.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error:
+              code: unauthorized
+              message: A valid DM Faster agent token is required.
+              retryable: false
+              requestId: req_01JEXAMPLE
+    Forbidden:
+      description: The token is valid but lacks a required scope or workspace access.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error:
+              code: insufficient_scope
+              message: The token does not grant the required scope.
+              retryable: false
+              requestId: req_01JEXAMPLE
+    NotFound:
+      description: The workspace-scoped campaign or company resource was not found.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error:
+              code: not_found
+              message: The requested resource was not found in this workspace.
+              retryable: false
+              requestId: req_01JEXAMPLE
+    TooManyRequests:
+      description: The workspace or token rate limit was exceeded.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error:
+              code: rate_limited
+              message: Too many agent tool requests.
+              retryable: true
+              requestId: req_01JEXAMPLE
+    InternalServerError:
+      description: The request failed unexpectedly.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error:
+              code: internal_error
+              message: The agent tool could not complete the request.
+              retryable: true
+              requestId: req_01JEXAMPLE
+    ServiceUnavailable:
+      description: An authoritative upstream service is temporarily unavailable.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+        Retry-After:
+          description: Seconds to wait before retrying, when known.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error:
+              code: service_unavailable
+              message: Authoritative workspace data is temporarily unavailable.
+              retryable: true
+              requestId: req_01JEXAMPLE
+
+  schemas:
+    AgentApiScope:
+      type: string
+      enum:
+        - workspace:read
+        - campaigns:read
+        - sending:read
+        - inbox:read
+        - pipeline:read
+
+    AgentDeviceAuthorizationInput:
+      type: object
+      additionalProperties: false
+      required:
+        - client
+        - deviceName
+        - codeChallenge
+        - codeChallengeMethod
+        - scopes
+        - expiresInDays
+      properties:
+        client:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '.*\S.*'
+        deviceName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '.*\S.*'
+        codeChallenge:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{43}$'
+          description: Base64url-encoded SHA-256 hash of the local PKCE verifier.
+        codeChallengeMethod:
+          type: string
+          const: S256
+        scopes:
+          type: array
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/AgentApiScope"
+        expiresInDays:
+          type: integer
+          enum: [30, 90, 365]
+
+    AgentDeviceAuthorizationResult:
+      type: object
+      additionalProperties: false
+      required:
+        - requestId
+        - deviceCode
+        - confirmationCode
+        - verificationUrl
+        - expiresIn
+        - interval
+      properties:
+        requestId:
+          type: string
+          pattern: '^agent_auth_[a-f0-9]{32}$'
+        deviceCode:
+          type: string
+          pattern: '^dmf_device_[A-Za-z0-9_-]{43}$'
+        confirmationCode:
+          type: string
+          pattern: '^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$'
+        verificationUrl:
+          type: string
+          format: uri
+          description: Secret-free same-origin URL to open in the user's browser.
+        expiresIn:
+          type: integer
+          const: 300
+        interval:
+          type: integer
+          minimum: 1
+
+    AgentDeviceTokenInput:
+      type: object
+      additionalProperties: false
+      required: [deviceCode, codeVerifier]
+      properties:
+        deviceCode:
+          type: string
+          pattern: '^dmf_device_[A-Za-z0-9_-]{43}$'
+          writeOnly: true
+        codeVerifier:
+          type: string
+          minLength: 43
+          maxLength: 128
+          pattern: '^[A-Za-z0-9._~-]+$'
+          writeOnly: true
+
+    AgentCredential:
+      type: object
+      additionalProperties: false
+      required: [id, name, client, scopes, workspaceUserId, expiresAt]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 200
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        client:
+          type: string
+          minLength: 1
+          maxLength: 200
+        scopes:
+          type: array
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/AgentApiScope"
+        workspaceUserId:
+          type: string
+          minLength: 1
+          maxLength: 200
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+
+    AgentAuthenticatedParty:
+      type: object
+      additionalProperties: false
+      required: [id, name, email]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 200
+        name:
+          type: string
+          minLength: 1
+          maxLength: 300
+        email:
+          type: string
+          format: email
+          maxLength: 320
+
+    AgentDeviceTokenResult:
+      type: object
+      additionalProperties: false
+      required:
+        - accessToken
+        - tokenType
+        - expiresIn
+        - expiresAt
+        - scope
+        - credential
+        - workspace
+        - user
+      properties:
+        accessToken:
+          type: string
+          pattern: '^dmf_pat_[a-f0-9]{64}$'
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          minimum: 0
+        expiresAt:
+          type: string
+          format: date-time
+        scope:
+          type: string
+          minLength: 1
+        credential:
+          $ref: "#/components/schemas/AgentCredential"
+        workspace:
+          $ref: "#/components/schemas/AgentAuthenticatedParty"
+        user:
+          $ref: "#/components/schemas/AgentAuthenticatedParty"
+
+    AgentAuthenticationStatus:
+      type: object
+      additionalProperties: false
+      required: [authenticated, credential, workspace, user]
+      properties:
+        authenticated:
+          type: boolean
+          const: true
+        credential:
+          $ref: "#/components/schemas/AgentCredential"
+        workspace:
+          $ref: "#/components/schemas/AgentAuthenticatedParty"
+        user:
+          $ref: "#/components/schemas/AgentAuthenticatedParty"
+
+    AgentAuthenticationRevoked:
+      type: object
+      additionalProperties: false
+      required: [revoked]
+      properties:
+        revoked:
+          type: boolean
+          const: true
+
+    AgentAuthErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              minLength: 1
+              maxLength: 100
+            message:
+              type: string
+              minLength: 1
+              maxLength: 500
+
+    AgentToolName:
+      type: string
+      enum:
+        - workspace.briefing
+        - campaigns.list
+        - campaign.inspect
+        - sending.inspect
+        - replies.list
+        - pipeline.inspect
+        - company.timeline
+
+    ReadToolPolicy:
+      type: object
+      additionalProperties: false
+      required: [effect, approval, exposure]
+      properties:
+        effect:
+          type: string
+          const: read
+        approval:
+          type: string
+          const: none
+        exposure:
+          type: string
+          const: public_api
+
+    AgentToolEvidence:
+      type: object
+      additionalProperties: false
+      required: [source, observedAt, scope]
+      properties:
+        source:
+          type: string
+          enum:
+            - workspace_campaigns
+            - worker_control_plane
+            - campaign_diagnostics
+            - pipeline
+            - inbox
+            - company_database
+            - classification_catalog
+            - campaign_workflow
+        observedAt:
+          type: string
+          format: date-time
+        scope:
+          type: string
+          enum: [workspace, campaign, audience, conversation]
+
+    AgentToolConsistency:
+      type: object
+      additionalProperties: false
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [verified, unavailable, conflict]
+        checks:
+          type: array
+          items:
+            type: string
+
+    AgentToolError:
+      type: object
+      additionalProperties: false
+      required: [code, message, retryable]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 100
+        message:
+          type: string
+          minLength: 1
+          maxLength: 500
+        retryable:
+          type: boolean
+
+    AgentToolResultBase:
+      type: object
+      additionalProperties: false
+      required:
+        - version
+        - tool
+        - policy
+        - ok
+        - generatedAt
+        - durationMs
+        - evidence
+        - consistency
+        - data
+        - artifacts
+        - error
+      properties:
+        version:
+          type: integer
+          const: 1
+        tool:
+          $ref: "#/components/schemas/AgentToolName"
+        policy:
+          $ref: "#/components/schemas/ReadToolPolicy"
+        ok:
+          type: boolean
+        generatedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          minimum: 0
+          maximum: 120000
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentToolEvidence"
+        consistency:
+          $ref: "#/components/schemas/AgentToolConsistency"
+        data: {}
+        artifacts:
+          type: array
+          items: {}
+        error:
+          oneOf:
+            - $ref: "#/components/schemas/AgentToolError"
+            - type: "null"
+
+    WorkspaceBriefingResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: workspace.briefing }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/WorkspaceBriefingOutput"
+                - type: "null"
+
+    CampaignsListResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: campaigns.list }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/CampaignsListOutput"
+                - type: "null"
+
+    CampaignInspectResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: campaign.inspect }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/CampaignInspectOutput"
+                - type: "null"
+
+    SendingInspectResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: sending.inspect }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/SendingInspectOutput"
+                - type: "null"
+
+    RepliesListResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: replies.list }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/RepliesListOutput"
+                - type: "null"
+
+    PipelineInspectResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: pipeline.inspect }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/PipelineInspectOutput"
+                - type: "null"
+
+    CompanyTimelineResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: company.timeline }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/CompanyTimelineOutput"
+                - type: "null"
+
+    WorkspaceBriefingInput:
+      type: object
+      additionalProperties: false
+
+    CampaignsListInput:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          $ref: "#/components/schemas/CampaignStatus"
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 25
+
+    CampaignInspectInput:
+      $ref: "#/components/schemas/OptionalCampaignInput"
+
+    SendingInspectInput:
+      $ref: "#/components/schemas/OptionalCampaignInput"
+
+    RepliesListInput:
+      type: object
+      additionalProperties: false
+      properties:
+        campaignId:
+          $ref: "#/components/schemas/ResourceId"
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 20
+        query:
+          type: string
+          minLength: 1
+          maxLength: 120
+          pattern: ".*\\S.*"
+          description: Optional case-insensitive reply search text.
+
+    PipelineInspectInput:
+      $ref: "#/components/schemas/OptionalCampaignInput"
+
+    CompanyTimelineInput:
+      type: object
+      additionalProperties: false
+      required: [campaignId, companyOutreachId]
+      properties:
+        campaignId:
+          $ref: "#/components/schemas/ResourceId"
+        companyOutreachId:
+          $ref: "#/components/schemas/ResourceId"
+
+    OptionalCampaignInput:
+      type: object
+      additionalProperties: false
+      properties:
+        campaignId:
+          allOf:
+            - $ref: "#/components/schemas/ResourceId"
+          description: Omit to use the selected, active, or most recent campaign.
+
+    ResourceId:
+      type: string
+      minLength: 1
+      maxLength: 160
+      pattern: ".*\\S.*"
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message, retryable, requestId]
+      properties:
+        code:
+          type: string
+          enum:
+            - invalid_request
+            - unauthorized
+            - insufficient_scope
+            - not_found
+            - rate_limited
+            - internal_error
+            - service_unavailable
+        message:
+          type: string
+          minLength: 1
+          maxLength: 500
+        retryable:
+          type: boolean
+        requestId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        details:
+          type: object
+          additionalProperties: true
+
+    CampaignStatus:
+      type: string
+      enum: [Draft, Queued, Running, Paused, Cooldown, Completed]
+
+    TargetChannel:
+      type: string
+      enum: [instagram, facebook, linkedin, gmail]
+
+    PipelineStage:
+      type: string
+      enum: [contacted, replied, call_booked, closed]
+
+    CampaignSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - status
+        - channels
+        - targetCount
+        - sentCount
+        - skippedCount
+        - failedCount
+        - dailyCap
+        - updatedAt
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/CampaignStatus"
+        channels:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/TargetChannel"
+        targetCount: { type: integer, minimum: 0 }
+        sentCount: { type: integer, minimum: 0 }
+        skippedCount: { type: integer, minimum: 0 }
+        failedCount: { type: integer, minimum: 0 }
+        dailyCap: { type: integer, minimum: 0 }
+        updatedAt:
+          type: string
+          format: date-time
+
+    CampaignCounts:
+      type: object
+      additionalProperties: false
+      required: [Draft, Queued, Running, Paused, Cooldown, Completed]
+      properties:
+        Draft: { type: integer, minimum: 0 }
+        Queued: { type: integer, minimum: 0 }
+        Running: { type: integer, minimum: 0 }
+        Paused: { type: integer, minimum: 0 }
+        Cooldown: { type: integer, minimum: 0 }
+        Completed: { type: integer, minimum: 0 }
+
+    PipelineCounts:
+      type: object
+      additionalProperties: false
+      required: [contacted, replied, call_booked, closed]
+      properties:
+        contacted: { type: integer, minimum: 0 }
+        replied: { type: integer, minimum: 0 }
+        call_booked: { type: integer, minimum: 0 }
+        closed: { type: integer, minimum: 0 }
+
+    SendingSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - activeWorkers
+        - offlineWorkers
+        - queuedJobs
+        - runningJobs
+        - completedToday
+        - queueState
+        - lastWorkerSeenAt
+      properties:
+        activeWorkers: { type: integer, minimum: 0 }
+        offlineWorkers: { type: integer, minimum: 0 }
+        queuedJobs: { type: integer, minimum: 0 }
+        runningJobs: { type: integer, minimum: 0 }
+        completedToday: { type: integer, minimum: 0 }
+        queueState:
+          type: string
+          enum: [idle, queued, running, waiting_for_browser]
+        lastWorkerSeenAt:
+          type: string
+          description: ISO 8601 timestamp, or an empty string when no worker has been observed.
+
+    WorkspaceBriefingOutput:
+      type: object
+      additionalProperties: false
+      required:
+        - generatedAt
+        - selectedCampaignId
+        - campaignCounts
+        - totals
+        - sending
+        - focusCampaign
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        selectedCampaignId:
+          type: string
+        campaignCounts:
+          $ref: "#/components/schemas/CampaignCounts"
+        totals:
+          type: object
+          additionalProperties: false
+          required: [campaigns, targetLists, sent, skipped, failed]
+          properties:
+            campaigns: { type: integer, minimum: 0 }
+            targetLists: { type: integer, minimum: 0 }
+            sent: { type: integer, minimum: 0 }
+            skipped: { type: integer, minimum: 0 }
+            failed: { type: integer, minimum: 0 }
+        sending:
+          $ref: "#/components/schemas/SendingSummary"
+        focusCampaign:
+          oneOf:
+            - $ref: "#/components/schemas/CampaignSummary"
+            - type: "null"
+
+    CampaignsListOutput:
+      type: object
+      additionalProperties: false
+      required: [generatedAt, campaigns]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        campaigns:
+          type: array
+          maxItems: 25
+          items:
+            $ref: "#/components/schemas/CampaignSummary"
+
+    CampaignInspectOutput:
+      type: object
+      additionalProperties: false
+      required: [generatedAt, campaign, execution, pipeline, rates]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        campaign:
+          $ref: "#/components/schemas/CampaignSummary"
+        execution:
+          type: object
+          additionalProperties: false
+          required:
+            - totalJobs
+            - queued
+            - running
+            - completed
+            - skipped
+            - failed
+            - companiesPlanned
+            - companiesReached
+            - byChannel
+          properties:
+            totalJobs: { type: integer, minimum: 0 }
+            queued: { type: integer, minimum: 0 }
+            running: { type: integer, minimum: 0 }
+            completed: { type: integer, minimum: 0 }
+            skipped: { type: integer, minimum: 0 }
+            failed: { type: integer, minimum: 0 }
+            companiesPlanned: { type: integer, minimum: 0 }
+            companiesReached: { type: integer, minimum: 0 }
+            byChannel:
+              type: object
+              additionalProperties: false
+              required: [instagram, facebook, linkedin, gmail]
+              properties:
+                instagram: { type: integer, minimum: 0 }
+                facebook: { type: integer, minimum: 0 }
+                linkedin: { type: integer, minimum: 0 }
+                gmail: { type: integer, minimum: 0 }
+        pipeline:
+          $ref: "#/components/schemas/PipelineCounts"
+        rates:
+          type: object
+          additionalProperties: false
+          required: [replyOrFurtherPercent, bookedCallPercent]
+          properties:
+            replyOrFurtherPercent:
+              oneOf:
+                - { type: number, minimum: 0, maximum: 100 }
+                - { type: "null" }
+            bookedCallPercent:
+              oneOf:
+                - { type: number, minimum: 0, maximum: 100 }
+                - { type: "null" }
+
+    SendingIssue:
+      type: object
+      additionalProperties: false
+      required: [code, severity, message]
+      properties:
+        code:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, blocker]
+        message:
+          type: string
+
+    SendingInspectOutput:
+      type: object
+      additionalProperties: false
+      required:
+        - generatedAt
+        - campaignId
+        - campaignName
+        - status
+        - summary
+        - issues
+        - sending
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        campaignId: { type: string }
+        campaignName: { type: string }
+        status:
+          type: string
+          enum: [healthy, attention, blocked, idle]
+        summary: { type: string }
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/SendingIssue"
+        sending:
+          $ref: "#/components/schemas/SendingSummary"
+
+    AgentLead:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - campaignId
+        - companyOutreachId
+        - companyName
+        - contactName
+        - handle
+        - avatarUrl
+        - stage
+        - channels
+        - lastContactedAt
+      properties:
+        id: { type: string }
+        campaignId: { type: string }
+        companyOutreachId: { type: string }
+        companyName: { type: string }
+        contactName: { type: string }
+        handle: { type: string }
+        avatarUrl: { type: string }
+        stage:
+          $ref: "#/components/schemas/PipelineStage"
+        channels:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/TargetChannel"
+        lastContactedAt: { type: string }
+
+    PipelineInspectOutput:
+      type: object
+      additionalProperties: false
+      required: [generatedAt, campaignId, campaignName, stageCounts, sample]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        campaignId: { type: string }
+        campaignName: { type: string }
+        stageCounts:
+          $ref: "#/components/schemas/PipelineCounts"
+        sample:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/AgentLead"
+
+    RepliesListOutput:
+      type: object
+      additionalProperties: false
+      required: [generatedAt, campaignId, campaignName, totalReplies, replies]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        campaignId: { type: string }
+        campaignName: { type: string }
+        totalReplies: { type: integer, minimum: 0 }
+        replies:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/AgentLead"
+
+    CompanyTimelineOutput:
+      type: object
+      additionalProperties: false
+      required:
+        - generatedAt
+        - campaignId
+        - campaignName
+        - companyOutreachId
+        - companyName
+        - stage
+        - lastEventAt
+        - events
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        campaignId: { type: string }
+        campaignName: { type: string }
+        companyOutreachId: { type: string }
+        companyName: { type: string }
+        stage:
+          type: string
+          enum: ["", contacted, replied, call_booked, closed]
+        lastEventAt: { type: string }
+        events:
+          type: array
+          maxItems: 30
+          items:
+            $ref: "#/components/schemas/CompanyTimelineEvent"
+
+    CompanyTimelineEvent:
+      type: object
+      additionalProperties: false
+      required: [id, type, occurredAt, targetName]
+      properties:
+        id: { type: string }
+        type:
+          type: string
+          enum: [planned, sent, failed, skipped, replied, positive, pipeline_stage]
+        occurredAt:
+          type: string
+          format: date-time
+        channel:
+          $ref: "#/components/schemas/TargetChannel"
+        targetName: { type: string }

@@ -1,0 +1,14 @@
+interface:
+  display_name: "DM Faster"
+  short_description: "Inspect DM Faster safely with read-only tools"
+  default_prompt: "Use $dmfaster to inspect my DM Faster workspace and recommend the next safe action."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "dmfaster"
+      description: "Official read-only DM Faster MCP server"
+      transport: "stdio"
+
+policy:
+  allow_implicit_invocation: true
