@@ -1,0 +1,20 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    versioning-strategy: increase-if-necessary
+    groups:
+      development-tooling:
+        dependency-type: development
+        patterns:
+          - "@types/*"
+          - "openapi-typescript"
+          - "typescript"
+      mcp-runtime:
+        dependency-type: production
+        patterns:
+          - "@modelcontextprotocol/*"
+          - "zod"
