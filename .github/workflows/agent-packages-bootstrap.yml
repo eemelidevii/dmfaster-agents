@@ -88,6 +88,13 @@ jobs:
           }
           NODE
 
+      - name: Set up Node and npm registry
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
       - name: Use a provenance-capable npm CLI
         run: npm install --global npm@11.11.0
 
