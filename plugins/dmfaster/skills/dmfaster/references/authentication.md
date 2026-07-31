@@ -15,13 +15,13 @@ The CLI and MCP server share the same operating-system credential for the config
 Check the current credential without installing a global command:
 
 ```bash
-npx --yes @dmfaster/cli@0.1.0 auth status --json
+npx --yes @dmfaster/cli@0.1.1 auth status --json
 ```
 
 When authentication is required:
 
 ```bash
-npx --yes @dmfaster/cli@0.1.0 auth login --json
+npx --yes @dmfaster/cli@0.1.1 auth login --json
 ```
 
 The CLI prints an `authorization_required` JSON event and a human-readable confirmation code, opens the focused DM Faster browser page, and waits. The human must personally:

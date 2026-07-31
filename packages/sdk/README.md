@@ -4,11 +4,11 @@ Typed Node.js client for the versioned DM Faster Agent API. The initial release
 exposes only the seven read-only tools and authenticates with a scoped,
 workspace-bound `dmf_pat_…` token.
 
-Version `0.1.0` is published on npm with provenance. The command below installs
-the public release directly.
+This source targets version `0.1.1`. The command below installs the exact
+release after it is available on npm with provenance.
 
 ```bash
-npm install @dmfaster/sdk@0.1.0
+npm install @dmfaster/sdk@0.1.1
 ```
 
 Non-loopback endpoints must use HTTPS. The client also refuses HTTP redirects so

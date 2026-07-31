@@ -1,6 +1,6 @@
 interface:
   display_name: "DM Faster"
-  short_description: "Inspect DM Faster safely with read-only tools"
+  short_description: "Inspect live DM Faster workspaces read-only"
   default_prompt: "Use $dmfaster to inspect my DM Faster workspace and recommend the next safe action."
 
 dependencies:

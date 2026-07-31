@@ -1,6 +1,6 @@
 {
   "name": "@dmfaster/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Read-only command-line interface for DM Faster.",
   "license": "Apache-2.0",
   "author": "DM Faster",
@@ -33,8 +33,8 @@
     "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
-    "@dmfaster/local-auth": "0.1.0",
-    "@dmfaster/sdk": "0.1.0"
+    "@dmfaster/local-auth": "0.1.1",
+    "@dmfaster/sdk": "0.1.1"
   },
   "devDependencies": {
     "@types/node": "24.13.3",

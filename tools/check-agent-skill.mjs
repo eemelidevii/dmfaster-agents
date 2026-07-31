@@ -46,6 +46,18 @@ if (!existsSync(skillPath)) {
     if (!description || description.length < 120 || description.length > 1_024) {
       fail("frontmatter description must be informative and at most 1,024 characters");
     }
+    if (
+      !/user's live DM Faster sales workspace/i.test(description || "")
+      || !/explicitly asks/i.test(description || "")
+    ) {
+      fail("frontmatter description must scope the skill to explicit live-workspace requests");
+    }
+    if (
+      !/Do not use for repository source debugging/i.test(description || "")
+      || !/extension-runtime diagnosis/i.test(description || "")
+    ) {
+      fail("frontmatter description must exclude repository and extension-runtime development");
+    }
   }
 
   if (/\bTODO\b|\[TODO/i.test(source)) fail("SKILL.md still contains template TODO text");
@@ -56,6 +68,9 @@ if (!existsSync(skillPath)) {
     fail("SKILL.md must reject generic transport and database workarounds");
   }
   if (!/read-only/i.test(source)) fail("SKILL.md must state the current read-only boundary");
+  if (!/not a repository-development interface/i.test(source)) {
+    fail("SKILL.md must route source-checkout development back to repository guidance");
+  }
   if (!/references\/authentication\.md/.test(source)) {
     fail("SKILL.md must route authentication through its dedicated reference");
   }
