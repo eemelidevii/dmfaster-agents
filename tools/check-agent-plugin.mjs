@@ -63,16 +63,15 @@ if (claudeManifest.mcpServers !== "./.mcp.json") {
 if (JSON.stringify(codexManifest.interface?.capabilities) !== JSON.stringify(["Read"])) {
   fail("Codex manifest must advertise only the Read capability");
 }
-if (codexManifest.interface?.composerIcon !== "./assets/dmfaster-logo.png") {
-  fail("Codex manifest must use the real DM Faster mark as its composer icon");
+if (codexManifest.interface?.composerIcon !== "./assets/dm-icon.png") {
+  fail("Codex manifest must use the production DM Faster icon as its composer icon");
 }
-if (codexManifest.interface?.logo !== "./assets/dmfaster-logo.png") {
-  fail("Codex manifest must use the real DM Faster mark as its light logo");
+if (codexManifest.interface?.logo !== "./assets/dm-icon.png") {
+  fail("Codex manifest must use the production DM Faster icon as its logo");
 }
-if (codexManifest.interface?.logoDark !== "./assets/dmfaster-logo-dark.png") {
-  fail("Codex manifest must use the real DM Faster mark as its dark logo");
+if (codexManifest.interface?.logoDark !== undefined) {
+  fail("Codex manifest must not substitute a generated dark logo");
 }
-
 const expectedPackage = `@dmfaster/mcp-server@${releaseVersion}`;
 const sharedServer = codexMcp.mcpServers?.dmfaster;
 const expectedMcpConfig = {
@@ -145,8 +144,7 @@ const requiredFiles = [
   "skills/dmfaster/agents/openai.yaml",
   "skills/dmfaster/references/authentication.md",
   "skills/dmfaster/references/tools.md",
-  "assets/dmfaster-logo.png",
-  "assets/dmfaster-logo-dark.png",
+  "assets/dm-icon.png",
 ];
 for (const relativePath of requiredFiles) {
   if (!existsSync(path.join(pluginRoot, relativePath))) fail(`missing plugin file ${relativePath}`);
