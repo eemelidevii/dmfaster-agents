@@ -1,0 +1,24 @@
+{
+  "name": "dmfaster-agents",
+  "owner": {
+    "name": "DM Faster",
+    "url": "https://dmfaster.com"
+  },
+  "description": "Official read-only DM Faster tools and workflows for agents.",
+  "plugins": [
+    {
+      "name": "dmfaster",
+      "displayName": "DM Faster",
+      "source": "./plugins/dmfaster",
+      "description": "Inspect DM Faster campaigns, sending health, replies, pipeline, and company history through seven official read-only tools.",
+      "category": "Productivity",
+      "tags": [
+        "sales",
+        "outreach",
+        "campaigns",
+        "mcp"
+      ],
+      "strict": true
+    }
+  ]
+}

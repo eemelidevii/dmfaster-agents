@@ -41,6 +41,8 @@ const [releaseVersion] = packageVersions;
 const codexManifest = readJson("plugins/dmfaster/.codex-plugin/plugin.json");
 const claudeManifest = readJson("plugins/dmfaster/.claude-plugin/plugin.json");
 const codexMcp = readJson("plugins/dmfaster/.mcp.json");
+const codexMarketplace = readJson(".agents/plugins/marketplace.json");
+const claudeMarketplace = readJson(".claude-plugin/marketplace.json");
 
 for (const [host, manifest] of [["Codex", codexManifest], ["Claude", claudeManifest]]) {
   if (manifest.name !== "dmfaster") fail(`${host} manifest name must be dmfaster`);
@@ -61,7 +63,15 @@ if (claudeManifest.mcpServers !== "./.mcp.json") {
 if (JSON.stringify(codexManifest.interface?.capabilities) !== JSON.stringify(["Read"])) {
   fail("Codex manifest must advertise only the Read capability");
 }
-
+if (codexManifest.interface?.composerIcon !== "./assets/dm-icon.png") {
+  fail("Codex manifest must use the production DM Faster icon as its composer icon");
+}
+if (codexManifest.interface?.logo !== "./assets/dm-icon.png") {
+  fail("Codex manifest must use the production DM Faster icon as its logo");
+}
+if (codexManifest.interface?.logoDark !== undefined) {
+  fail("Codex manifest must not substitute a generated dark logo");
+}
 const expectedPackage = `@dmfaster/mcp-server@${releaseVersion}`;
 const sharedServer = codexMcp.mcpServers?.dmfaster;
 const expectedMcpConfig = {
@@ -86,6 +96,47 @@ for (const [host, server] of [["Codex", sharedServer], ["Claude", sharedServer]]
   }
 }
 
+const expectedCodexMarketplace = {
+  name: "dmfaster-agents",
+  interface: {
+    displayName: "DM Faster",
+  },
+  plugins: [
+    {
+      name: "dmfaster",
+      source: {
+        source: "local",
+        path: "./plugins/dmfaster",
+      },
+      policy: {
+        installation: "AVAILABLE",
+        authentication: "ON_INSTALL",
+      },
+      category: "Productivity",
+    },
+  ],
+};
+if (JSON.stringify(codexMarketplace) !== JSON.stringify(expectedCodexMarketplace)) {
+  fail("Codex marketplace must expose only the canonical dmfaster plugin");
+}
+
+if (claudeMarketplace.name !== "dmfaster-agents") {
+  fail("Claude marketplace name must be dmfaster-agents");
+}
+if (claudeMarketplace.owner?.name !== "DM Faster") {
+  fail("Claude marketplace owner must be DM Faster");
+}
+if (!Array.isArray(claudeMarketplace.plugins) || claudeMarketplace.plugins.length !== 1) {
+  fail("Claude marketplace must expose exactly one plugin");
+} else {
+  const [plugin] = claudeMarketplace.plugins;
+  if (plugin.name !== "dmfaster") fail("Claude marketplace plugin name must be dmfaster");
+  if (plugin.source !== "./plugins/dmfaster") {
+    fail("Claude marketplace must point to the canonical dmfaster plugin");
+  }
+  if (plugin.strict !== true) fail("Claude marketplace plugin must use strict mode");
+}
+
 const requiredFiles = [
   "LICENSE",
   "README.md",
@@ -93,9 +144,21 @@ const requiredFiles = [
   "skills/dmfaster/agents/openai.yaml",
   "skills/dmfaster/references/authentication.md",
   "skills/dmfaster/references/tools.md",
+  "assets/dm-icon.png",
 ];
 for (const relativePath of requiredFiles) {
   if (!existsSync(path.join(pluginRoot, relativePath))) fail(`missing plugin file ${relativePath}`);
+}
+
+const publicReadme = readFileSync(path.join(repoRoot, "README.md"), "utf8");
+const requiredInstallCommands = [
+  "codex plugin marketplace add eemelidevii/dmfaster-agents",
+  "codex plugin add dmfaster@dmfaster-agents",
+  "claude plugin marketplace add eemelidevii/dmfaster-agents",
+  "claude plugin install dmfaster@dmfaster-agents",
+];
+for (const command of requiredInstallCommands) {
+  if (!publicReadme.includes(command)) fail(`README.md must document \`${command}\``);
 }
 
 const versionPinnedFiles = [

@@ -4,9 +4,8 @@ Stdio MCP server for the seven read-only DM Faster Agent API tools. Authenticate
 first through the DM Faster CLI's focused browser flow; the MCP server resolves
 the same operating-system stored credential.
 
-> Distribution note: the registry commands below work only after this exact
-> release is published. Before then, maintainers configure the built MCP server
-> from an authorized source checkout.
+Version `0.1.0` is published on npm with provenance. The commands below use the
+public release directly.
 
 ```bash
 npx --yes @dmfaster/cli@0.1.0 auth login --json
