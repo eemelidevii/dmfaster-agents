@@ -2,7 +2,7 @@
 
 This repository contains only the public, read-only DM Faster Agent API
 contract, local authentication library, SDK, CLI, MCP server, and shared
-Codex/Claude plugin.
+Codex/Claude/Cursor plugin.
 
 ## Task and tool routing
 
@@ -23,7 +23,7 @@ Codex/Claude plugin.
 
 - Change `packages/public-api/openapi.yaml`, then run
   `npm run generate:agent-api`.
-- Keep all four package versions, both plugin manifest versions, and all pinned
+- Keep all four package versions, all three plugin manifest versions, and all pinned
   installation commands identical.
 - Keep the plugin skill under `plugins/dmfaster/skills/dmfaster/`.
 - Keep repository-wide coding-agent instructions in this file. Root `CLAUDE.md` imports it instead of duplicating policy.
@@ -38,3 +38,5 @@ Codex/Claude plugin.
 - Later releases use trusted publishing through
   `.github/workflows/agent-packages-release.yml`.
 - npm package versions are immutable. Fix mistakes with a new patch version.
+- Public marketplace submissions and re-index requests require explicit user
+  approval in the active task.

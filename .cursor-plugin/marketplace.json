@@ -1,0 +1,16 @@
+{
+  "name": "dmfaster-agents",
+  "owner": {
+    "name": "DM Faster"
+  },
+  "metadata": {
+    "description": "Official read-only DM Faster tools and workflows for agents."
+  },
+  "plugins": [
+    {
+      "name": "dmfaster",
+      "source": "plugins/dmfaster",
+      "description": "Inspect a live DM Faster workspace through seven official read-only campaign, sending, reply, pipeline, and company-history tools."
+    }
+  ]
+}

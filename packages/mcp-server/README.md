@@ -24,7 +24,7 @@ and idempotent. The seven MCP names are:
 - `pipeline_inspect`
 - `company_timeline`
 
-For a local Codex, Claude, or other MCP host, use this version-pinned stdio
+For a local Codex, Claude, Cursor, or other MCP host, use this version-pinned stdio
 entry:
 
 ```json

@@ -1,6 +1,6 @@
 # DM Faster agent plugin
 
-This dual-host plugin bundles the canonical DM Faster skill and a version-pinned local stdio MCP server definition for Codex and Claude Code.
+This multi-host plugin bundles the canonical DM Faster skill and a version-pinned local stdio MCP server definition for Codex, Claude Code, and Cursor.
 
 The current release exposes exactly seven read-only tools. It cannot create or edit campaigns, launch or pause sending, send replies, schedule work, book meetings, or spend credits.
 
@@ -18,6 +18,9 @@ codex plugin add dmfaster@dmfaster-agents
 claude plugin marketplace add eemelidevii/dmfaster-agents
 claude plugin install dmfaster@dmfaster-agents
 ```
+
+After the separate Cursor Marketplace review is approved, install from Cursor
+Agent with `/add-plugin dmfaster`.
 
 Repository maintainers must follow the
 [public release guide](../../docs/releasing.md). Package publication and
@@ -38,10 +41,11 @@ The human signs in with their normal DM Faster account, compares the browser and
 - Codex manifest: `.codex-plugin/plugin.json`
 - Shared MCP map: `.mcp.json`
 - Claude manifest: `.claude-plugin/plugin.json`
+- Cursor manifest: `.cursor-plugin/plugin.json`
 - Canonical shared skill: `skills/dmfaster/`
 
 Use the repository checks before packaging. Validate the complete manifests and
-marketplace catalogs, then test a clean marketplace install, browser login, and
-representative CLI and MCP reads. Claude Code can also load the complete
-directory during development with
-`claude --plugin-dir ./plugins/dmfaster`.
+marketplace catalogs, then test clean Codex, Claude, and Cursor installs,
+browser login, and representative CLI and MCP reads. Claude Code can also load
+the complete directory during development with `claude --plugin-dir
+./plugins/dmfaster`.
