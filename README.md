@@ -8,7 +8,7 @@ This repository contains the public, read-only agent interface for
 - the typed JavaScript SDK;
 - the `dmfaster` command-line client;
 - the `dmfaster-mcp` stdio MCP server;
-- the shared Codex and Claude plugin and skill.
+- the shared Codex, Claude, and Cursor plugin and skill.
 
 It intentionally contains no DM Faster application server, database, browser
 extension, sending runtime, private product source, or write-capable tools.
@@ -31,6 +31,17 @@ codex plugin add dmfaster@dmfaster-agents
 claude plugin marketplace add eemelidevii/dmfaster-agents
 claude plugin install dmfaster@dmfaster-agents
 ```
+
+### Cursor
+
+The Cursor plugin is packaged in this repository. After its separate Cursor
+Marketplace review is approved, install it from Cursor Agent with:
+
+```text
+/add-plugin dmfaster
+```
+
+Merging the manifest does not by itself publish the universal Cursor listing.
 
 Authenticate with your normal DM Faster account:
 

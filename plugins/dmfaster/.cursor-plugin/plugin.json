@@ -1,0 +1,29 @@
+{
+  "name": "dmfaster",
+  "displayName": "DM Faster",
+  "version": "0.1.1",
+  "description": "Inspect a live DM Faster workspace through seven official read-only campaign, sending, reply, pipeline, and company-history tools.",
+  "author": {
+    "name": "DM Faster"
+  },
+  "homepage": "https://dmfaster.com/docs/agents",
+  "repository": "https://github.com/eemelidevii/dmfaster-agents",
+  "license": "Apache-2.0",
+  "logo": "assets/dm-icon.png",
+  "keywords": [
+    "sales",
+    "outreach",
+    "campaigns",
+    "mcp",
+    "agent"
+  ],
+  "category": "productivity",
+  "tags": [
+    "sales",
+    "outreach",
+    "campaigns",
+    "read-only"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

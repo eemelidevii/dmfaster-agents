@@ -5,7 +5,7 @@ Both require an explicitly reviewed version on public `main`.
 
 ## Preconditions
 
-1. All four package versions, both plugin versions, and pinned documentation
+1. All four package versions, all three plugin versions, and pinned documentation
    commands match.
 2. `npm run check:agents` passes.
 3. `npm audit --omit=dev` passes.
@@ -45,14 +45,15 @@ Dispatch `.github/workflows/agent-packages-release.yml` from `main` with:
 That workflow has no npm-token fallback. It obtains a short-lived npm
 credential through GitHub OIDC.
 
-## GitHub marketplace release
+## Plugin marketplace release
 
-The repository is the public marketplace source for both Codex and Claude
-Code:
+The repository is the public marketplace source for Codex, Claude Code, and
+Cursor:
 
 - `.agents/plugins/marketplace.json` is the Codex catalog;
 - `.claude-plugin/marketplace.json` is the Claude Code catalog;
-- both point to the canonical `plugins/dmfaster/` directory.
+- `.cursor-plugin/marketplace.json` is the Cursor catalog;
+- all three point to the canonical `plugins/dmfaster/` directory.
 
 After package publication, merge the aligned plugin release to public `main`,
 then verify clean installs from GitHub:
@@ -65,11 +66,17 @@ claude plugin marketplace add eemelidevii/dmfaster-agents
 claude plugin install dmfaster@dmfaster-agents
 ```
 
+Test Cursor from a clean profile against the complete `plugins/dmfaster/`
+directory before submission. With explicit approval, submit the public source
+through `https://cursor.com/marketplace/publish`; Cursor reviews the publisher
+and plugin separately. After the listing is approved, verify `/add-plugin
+dmfaster` from Cursor Agent.
+
 Start a new host session, authenticate through the focused browser flow, and
-exercise representative read-only tools. GitHub marketplace publication does
-not submit the plugin to the universal ChatGPT and Codex Plugins Directory.
-That later submission requires a production HTTPS MCP endpoint, publisher
-review materials, and separate approval.
+exercise representative read-only tools. Merging the GitHub catalogs does not
+submit the plugin to Cursor Marketplace or the universal ChatGPT and Codex
+Plugins Directory. Each listing requires its own publisher review materials
+and separate approval.
 
 ## Recovery
 

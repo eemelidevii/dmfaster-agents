@@ -40,11 +40,17 @@ const [releaseVersion] = packageVersions;
 
 const codexManifest = readJson("plugins/dmfaster/.codex-plugin/plugin.json");
 const claudeManifest = readJson("plugins/dmfaster/.claude-plugin/plugin.json");
-const codexMcp = readJson("plugins/dmfaster/.mcp.json");
+const cursorManifest = readJson("plugins/dmfaster/.cursor-plugin/plugin.json");
+const sharedMcp = readJson("plugins/dmfaster/.mcp.json");
 const codexMarketplace = readJson(".agents/plugins/marketplace.json");
 const claudeMarketplace = readJson(".claude-plugin/marketplace.json");
+const cursorMarketplace = readJson(".cursor-plugin/marketplace.json");
 
-for (const [host, manifest] of [["Codex", codexManifest], ["Claude", claudeManifest]]) {
+for (const [host, manifest] of [
+  ["Codex", codexManifest],
+  ["Claude", claudeManifest],
+  ["Cursor", cursorManifest],
+]) {
   if (manifest.name !== "dmfaster") fail(`${host} manifest name must be dmfaster`);
   if (manifest.version !== releaseVersion) fail(`${host} manifest version must match agent packages`);
   if (manifest.license !== "Apache-2.0") fail(`${host} manifest must declare Apache-2.0`);
@@ -60,6 +66,9 @@ if (codexManifest.mcpServers !== "./.mcp.json") {
 if (claudeManifest.mcpServers !== "./.mcp.json") {
   fail("Claude manifest must use the shared MCP config");
 }
+if (cursorManifest.mcpServers !== "./.mcp.json") {
+  fail("Cursor manifest must use the shared MCP config");
+}
 if (JSON.stringify(codexManifest.interface?.capabilities) !== JSON.stringify(["Read"])) {
   fail("Codex manifest must advertise only the Read capability");
 }
@@ -72,8 +81,61 @@ if (codexManifest.interface?.logo !== "./assets/dm-icon.png") {
 if (codexManifest.interface?.logoDark !== undefined) {
   fail("Codex manifest must not substitute a generated dark logo");
 }
+if (cursorManifest.displayName !== "DM Faster") {
+  fail("Cursor manifest displayName must be DM Faster");
+}
+if (cursorManifest.logo !== "assets/dm-icon.png") {
+  fail("Cursor manifest must use the approved repository-hosted logo");
+}
+if (cursorManifest.category !== "productivity") {
+  fail("Cursor manifest category must be productivity");
+}
+if (JSON.stringify(cursorManifest.author) !== JSON.stringify({ name: "DM Faster" })) {
+  fail("Cursor manifest author must match its schema-safe DM Faster metadata");
+}
+
+const cursorAllowedKeys = new Set([
+  "name",
+  "displayName",
+  "version",
+  "description",
+  "author",
+  "homepage",
+  "repository",
+  "license",
+  "logo",
+  "keywords",
+  "category",
+  "tags",
+  "skills",
+  "mcpServers",
+]);
+for (const key of Object.keys(cursorManifest)) {
+  if (!cursorAllowedKeys.has(key)) fail(`Cursor manifest contains unsupported property ${key}`);
+}
+if (!/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/u.test(cursorManifest.name ?? "")) {
+  fail("Cursor manifest name must match Cursor's lowercase plugin identifier format");
+}
+if (!/^\d+\.\d+\.\d+$/u.test(cursorManifest.version ?? "")) {
+  fail("Cursor manifest version must be a stable semantic version");
+}
+for (const key of ["description", "homepage", "repository", "license"]) {
+  if (typeof cursorManifest[key] !== "string" || cursorManifest[key].length === 0) {
+    fail(`Cursor manifest ${key} must be a non-empty string`);
+  }
+}
+for (const key of ["keywords", "tags"]) {
+  if (!Array.isArray(cursorManifest[key]) || cursorManifest[key].some((value) => typeof value !== "string")) {
+    fail(`Cursor manifest ${key} must be an array of strings`);
+  }
+}
+const cursorLogo = path.resolve(pluginRoot, cursorManifest.logo ?? "");
+if (!cursorLogo.startsWith(`${pluginRoot}${path.sep}`) || !existsSync(cursorLogo)) {
+  fail("Cursor manifest logo must resolve inside the plugin directory");
+}
+
 const expectedPackage = `@dmfaster/mcp-server@${releaseVersion}`;
-const sharedServer = codexMcp.mcpServers?.dmfaster;
+const sharedServer = sharedMcp.mcpServers?.dmfaster;
 const expectedMcpConfig = {
   mcpServers: {
     dmfaster: {
@@ -82,10 +144,14 @@ const expectedMcpConfig = {
     },
   },
 };
-if (JSON.stringify(codexMcp) !== JSON.stringify(expectedMcpConfig)) {
+if (JSON.stringify(sharedMcp) !== JSON.stringify(expectedMcpConfig)) {
   fail("shared MCP config must contain only the version-pinned dmfaster stdio server");
 }
-for (const [host, server] of [["Codex", sharedServer], ["Claude", sharedServer]]) {
+for (const [host, server] of [
+  ["Codex", sharedServer],
+  ["Claude", sharedServer],
+  ["Cursor", sharedServer],
+]) {
   if (server?.command !== "npx") fail(`${host} MCP server must launch through npx`);
   if (JSON.stringify(server?.args) !== JSON.stringify(["--yes", expectedPackage])) {
     fail(`${host} MCP server must pin ${expectedPackage}`);
@@ -137,9 +203,44 @@ if (!Array.isArray(claudeMarketplace.plugins) || claudeMarketplace.plugins.lengt
   if (plugin.strict !== true) fail("Claude marketplace plugin must use strict mode");
 }
 
+const cursorMarketplaceAllowedKeys = new Set(["name", "owner", "metadata", "plugins"]);
+for (const key of Object.keys(cursorMarketplace)) {
+  if (!cursorMarketplaceAllowedKeys.has(key)) {
+    fail(`Cursor marketplace contains unsupported property ${key}`);
+  }
+}
+if (cursorMarketplace.name !== "dmfaster-agents") {
+  fail("Cursor marketplace name must be dmfaster-agents");
+}
+if (JSON.stringify(cursorMarketplace.owner) !== JSON.stringify({ name: "DM Faster" })) {
+  fail("Cursor marketplace owner must be DM Faster without a personal contact address");
+}
+if (typeof cursorMarketplace.metadata?.description !== "string") {
+  fail("Cursor marketplace must include a description");
+}
+if (!Array.isArray(cursorMarketplace.plugins) || cursorMarketplace.plugins.length !== 1) {
+  fail("Cursor marketplace must contain exactly one plugin");
+} else {
+  const [entry] = cursorMarketplace.plugins;
+  const entryAllowedKeys = new Set(["name", "source", "description"]);
+  for (const key of Object.keys(entry)) {
+    if (!entryAllowedKeys.has(key)) fail(`Cursor marketplace entry contains unsupported property ${key}`);
+  }
+  if (entry.name !== cursorManifest.name) fail("Cursor marketplace and plugin names must match");
+  if (entry.source !== "plugins/dmfaster") {
+    fail("Cursor marketplace source must resolve to plugins/dmfaster");
+  }
+  if (entry.description !== cursorManifest.description) {
+    fail("Cursor marketplace and plugin descriptions must match");
+  }
+}
+
 const requiredFiles = [
   "LICENSE",
   "README.md",
+  ".codex-plugin/plugin.json",
+  ".claude-plugin/plugin.json",
+  ".cursor-plugin/plugin.json",
   "skills/dmfaster/SKILL.md",
   "skills/dmfaster/agents/openai.yaml",
   "skills/dmfaster/references/authentication.md",
@@ -156,6 +257,7 @@ const requiredInstallCommands = [
   "codex plugin add dmfaster@dmfaster-agents",
   "claude plugin marketplace add eemelidevii/dmfaster-agents",
   "claude plugin install dmfaster@dmfaster-agents",
+  "/add-plugin dmfaster",
 ];
 for (const command of requiredInstallCommands) {
   if (!publicReadme.includes(command)) fail(`README.md must document \`${command}\``);
@@ -182,5 +284,5 @@ for (const relativePath of versionPinnedFiles) {
 }
 
 if (!process.exitCode) {
-  process.stdout.write(`DM Faster Codex and Claude plugin structure is valid for ${releaseVersion}.\n`);
+  process.stdout.write(`DM Faster Codex, Claude, and Cursor plugin structure is valid for ${releaseVersion}.\n`);
 }
