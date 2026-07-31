@@ -45,6 +45,32 @@ Dispatch `.github/workflows/agent-packages-release.yml` from `main` with:
 That workflow has no npm-token fallback. It obtains a short-lived npm
 credential through GitHub OIDC.
 
+## GitHub marketplace release
+
+The repository is the public marketplace source for both Codex and Claude
+Code:
+
+- `.agents/plugins/marketplace.json` is the Codex catalog;
+- `.claude-plugin/marketplace.json` is the Claude Code catalog;
+- both point to the canonical `plugins/dmfaster/` directory.
+
+After package publication, merge the aligned plugin release to public `main`,
+then verify clean installs from GitHub:
+
+```bash
+codex plugin marketplace add eemelidevii/dmfaster-agents
+codex plugin add dmfaster@dmfaster-agents
+
+claude plugin marketplace add eemelidevii/dmfaster-agents
+claude plugin install dmfaster@dmfaster-agents
+```
+
+Start a new host session, authenticate through the focused browser flow, and
+exercise representative read-only tools. GitHub marketplace publication does
+not submit the plugin to the universal ChatGPT and Codex Plugins Directory.
+That later submission requires a production HTTPS MCP endpoint, publisher
+review materials, and separate approval.
+
 ## Recovery
 
 Never overwrite or unpublish a release as routine recovery. Deprecate an

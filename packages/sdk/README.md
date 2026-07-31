@@ -1,12 +1,11 @@
 # @dmfaster/sdk
 
-Typed Node.js client for the versioned DM Faster Agent API. The developer
-preview exposes only the seven read-only tools and authenticates with a scoped,
+Typed Node.js client for the versioned DM Faster Agent API. The initial release
+exposes only the seven read-only tools and authenticates with a scoped,
 workspace-bound `dmf_pat_…` token.
 
-> Distribution note: the registry command below works only after this exact
-> release is published. Before then, maintainers use the built package from an
-> authorized source checkout.
+Version `0.1.0` is published on npm with provenance. The command below installs
+the public release directly.
 
 ```bash
 npm install @dmfaster/sdk@0.1.0

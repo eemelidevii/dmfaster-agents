@@ -5,9 +5,8 @@ server. It implements DM Faster's browser-approved device authorization flow,
 stores issued credentials in the operating system's credential store, and
 supports `DMFASTER_TOKEN` for non-interactive CI environments.
 
-> Distribution note: the registry command below works only after this exact
-> release is published. Before then, maintainers use the built package from an
-> authorized source checkout.
+Version `0.1.0` is published on npm with provenance. The command below installs
+the public release directly.
 
 ```sh
 npm install @dmfaster/local-auth@0.1.0

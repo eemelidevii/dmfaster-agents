@@ -1,0 +1,20 @@
+{
+  "name": "dmfaster-agents",
+  "interface": {
+    "displayName": "DM Faster"
+  },
+  "plugins": [
+    {
+      "name": "dmfaster",
+      "source": {
+        "source": "local",
+        "path": "./plugins/dmfaster"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

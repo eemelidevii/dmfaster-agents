@@ -13,19 +13,44 @@ This repository contains the public, read-only agent interface for
 It intentionally contains no DM Faster application server, database, browser
 extension, sending runtime, private product source, or write-capable tools.
 
-## Install
+## Install the plugin
 
-Node.js 24 is required.
+Node.js 24 is required. Add the public GitHub marketplace, install DM Faster,
+and start a new session so the skill and MCP tools load.
+
+### Codex
+
+```bash
+codex plugin marketplace add eemelidevii/dmfaster-agents
+codex plugin add dmfaster@dmfaster-agents
+```
+
+### Claude Code
+
+```bash
+claude plugin marketplace add eemelidevii/dmfaster-agents
+claude plugin install dmfaster@dmfaster-agents
+```
+
+Authenticate with your normal DM Faster account:
 
 ```bash
 npx --yes @dmfaster/cli@0.1.0 auth login --json
+```
+
+The focused browser page shows the exact workspace, expiry, scopes, and a
+confirmation code that must match the CLI. Credentials are stored in macOS
+Keychain or Linux Secret Service and are never written to a plaintext
+configuration file.
+
+## Use the CLI or MCP server directly
+
+The same public packages can be used without the plugin:
+
+```bash
 npx --yes @dmfaster/cli@0.1.0 workspace briefing --json
 npx --yes @dmfaster/mcp-server@0.1.0
 ```
-
-Browser authorization grants only the exact read scopes shown on the approval
-page. Credentials are stored in macOS Keychain or Linux Secret Service and are
-never written to a plaintext configuration file.
 
 The MCP server exposes exactly seven read-only tools:
 

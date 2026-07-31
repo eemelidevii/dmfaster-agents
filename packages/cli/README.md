@@ -3,9 +3,8 @@
 Read-only CLI for the DM Faster Agent API. Run the version-pinned package, then
 authenticate through the focused DM Faster browser approval page.
 
-> Distribution note: the registry commands below work only after this exact
-> release is published. Before then, maintainers use the built CLI from an
-> authorized source checkout.
+Version `0.1.0` is published on npm with provenance. The commands below use the
+public release directly.
 
 ```bash
 npx --yes @dmfaster/cli@0.1.0 auth login --json
