@@ -35,6 +35,9 @@
       "Check why my DM Faster campaign is not sending.",
       "Summarize priority replies and pipeline activity."
     ],
-    "brandColor": "#171717"
+    "brandColor": "#171717",
+    "composerIcon": "./assets/dmfaster-logo.png",
+    "logo": "./assets/dmfaster-logo.png",
+    "logoDark": "./assets/dmfaster-logo-dark.png"
   }
 }
