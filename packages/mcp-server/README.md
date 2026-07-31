@@ -4,12 +4,12 @@ Stdio MCP server for the seven read-only DM Faster Agent API tools. Authenticate
 first through the DM Faster CLI's focused browser flow; the MCP server resolves
 the same operating-system stored credential.
 
-Version `0.1.0` is published on npm with provenance. The commands below use the
-public release directly.
+This source targets version `0.1.1`. The commands below use the exact release
+after it is available on npm with provenance.
 
 ```bash
-npx --yes @dmfaster/cli@0.1.0 auth login --json
-npx --yes @dmfaster/mcp-server@0.1.0
+npx --yes @dmfaster/cli@0.1.1 auth login --json
+npx --yes @dmfaster/mcp-server@0.1.1
 ```
 
 The process uses stdout only for MCP protocol messages. Startup and fatal errors
@@ -32,7 +32,7 @@ entry:
   "mcpServers": {
     "dmfaster": {
       "command": "npx",
-      "args": ["--yes", "@dmfaster/mcp-server@0.1.0"]
+      "args": ["--yes", "@dmfaster/mcp-server@0.1.1"]
     }
   }
 }

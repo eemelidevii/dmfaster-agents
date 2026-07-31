@@ -6,11 +6,10 @@ The current release exposes exactly seven read-only tools. It cannot create or e
 
 ## Release status
 
-Version `0.1.0` is publicly installable from the
+This source targets version `0.1.1` for the
 [`eemelidevii/dmfaster-agents`](https://github.com/eemelidevii/dmfaster-agents)
-GitHub marketplace. Its four version-pinned `@dmfaster` packages, production
-browser authorization, and all seven read-only tools have been verified
-end-to-end.
+GitHub marketplace. Publish and verify its four version-pinned `@dmfaster`
+packages before treating the release as installable.
 
 ```bash
 codex plugin marketplace add eemelidevii/dmfaster-agents
@@ -29,7 +28,7 @@ marketplace publication remain separate approved releases.
 Node.js 24 and macOS Keychain or Linux Secret Service are required. Windows is not supported in this release.
 
 ```bash
-npx --yes @dmfaster/cli@0.1.0 auth login --json
+npx --yes @dmfaster/cli@0.1.1 auth login --json
 ```
 
 The human signs in with their normal DM Faster account, compares the browser and CLI confirmation codes, reviews the workspace and read scopes, and personally approves or denies the request. The CLI and MCP server then share the operating-system credential.

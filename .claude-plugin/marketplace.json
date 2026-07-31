@@ -10,7 +10,7 @@
       "name": "dmfaster",
       "displayName": "DM Faster",
       "source": "./plugins/dmfaster",
-      "description": "Inspect DM Faster campaigns, sending health, replies, pipeline, and company history through seven official read-only tools.",
+      "description": "Inspect a live DM Faster workspace through seven official read-only campaign, sending, reply, pipeline, and company-history tools.",
       "category": "Productivity",
       "tags": [
         "sales",

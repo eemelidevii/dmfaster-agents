@@ -4,6 +4,13 @@ This repository contains only the public, read-only DM Faster Agent API
 contract, local authentication library, SDK, CLI, MCP server, and shared
 Codex/Claude plugin.
 
+## Task and tool routing
+
+- Repository development is the default mode in this checkout. Use source, contract tests, package tests, and local diagnostics for debugging, implementation, review, and release work.
+- Do not invoke the DM Faster skill, MCP server, or CLI merely because a repository task mentions campaigns, replies, sending, pipeline, or companies. Those interfaces inspect a user's live workspace; they are not repository-development tools.
+- Use live DM Faster tools only when the user explicitly requests current workspace evidence or when an approved end-to-end test specifically exercises the public interface.
+- Treat mixed prompts that ask to fix a product symptom as repository tasks first. Live observations supplement source evidence; they never replace it.
+
 ## Commands
 
 - Use Node.js 24.
@@ -19,6 +26,7 @@ Codex/Claude plugin.
 - Keep all four package versions, both plugin manifest versions, and all pinned
   installation commands identical.
 - Keep the plugin skill under `plugins/dmfaster/skills/dmfaster/`.
+- Keep repository-wide coding-agent instructions in this file. Root `CLAUDE.md` imports it instead of duplicating policy.
 - Never add DM Faster application, database, extension, browser-worker, cookie,
   or private-repository dependencies.
 

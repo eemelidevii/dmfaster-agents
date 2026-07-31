@@ -3,18 +3,18 @@
 Read-only CLI for the DM Faster Agent API. Run the version-pinned package, then
 authenticate through the focused DM Faster browser approval page.
 
-Version `0.1.0` is published on npm with provenance. The commands below use the
-public release directly.
+This source targets version `0.1.1`. The commands below use the exact release
+after it is available on npm with provenance.
 
 ```bash
-npx --yes @dmfaster/cli@0.1.0 auth login --json
-npx --yes @dmfaster/cli@0.1.0 auth status --json
+npx --yes @dmfaster/cli@0.1.1 auth login --json
+npx --yes @dmfaster/cli@0.1.1 auth status --json
 
-npx --yes @dmfaster/cli@0.1.0 workspace briefing --json
-npx --yes @dmfaster/cli@0.1.0 campaigns list --status Running --limit 10 --json
-npx --yes @dmfaster/cli@0.1.0 replies list campaign_123 --limit 5 --query "Visio" --json
-npx --yes @dmfaster/cli@0.1.0 company timeline campaign_123 outreach_456 --json
-npx --yes @dmfaster/cli@0.1.0 auth logout --json
+npx --yes @dmfaster/cli@0.1.1 workspace briefing --json
+npx --yes @dmfaster/cli@0.1.1 campaigns list --status Running --limit 10 --json
+npx --yes @dmfaster/cli@0.1.1 replies list campaign_123 --limit 5 --query "Visio" --json
+npx --yes @dmfaster/cli@0.1.1 company timeline campaign_123 outreach_456 --json
+npx --yes @dmfaster/cli@0.1.1 auth logout --json
 ```
 
 `auth login` creates a short-lived PKCE device request, prints a confirmation

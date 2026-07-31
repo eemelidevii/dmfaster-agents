@@ -1,7 +1,7 @@
 {
   "name": "dmfaster",
-  "version": "0.1.0",
-  "description": "Inspect DM Faster campaigns, sending health, replies, pipeline, and company history through seven official read-only tools.",
+  "version": "0.1.1",
+  "description": "Inspect a live DM Faster workspace through seven official read-only campaign, sending, reply, pipeline, and company-history tools.",
   "author": {
     "name": "DM Faster",
     "url": "https://dmfaster.com"
@@ -21,7 +21,7 @@
   "interface": {
     "displayName": "DM Faster",
     "shortDescription": "Inspect DM Faster with safe read-only tools",
-    "longDescription": "Connect a DM Faster workspace to Codex, inspect campaign and sending health, review replies and pipeline activity, and keep all product actions behind DM Faster's safety boundaries.",
+    "longDescription": "Connect a live DM Faster workspace to Codex, inspect campaign and sending health, review replies and pipeline activity, and keep all product actions behind DM Faster's safety boundaries.",
     "developerName": "DM Faster",
     "category": "Productivity",
     "capabilities": [

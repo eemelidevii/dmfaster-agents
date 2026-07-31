@@ -1,8 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dmfaster",
-  "version": "0.1.0",
-  "description": "Inspect DM Faster through seven official read-only sales workspace tools.",
+  "version": "0.1.1",
+  "description": "Inspect a live DM Faster sales workspace through seven official read-only tools.",
   "author": {
     "name": "DM Faster",
     "url": "https://dmfaster.com"

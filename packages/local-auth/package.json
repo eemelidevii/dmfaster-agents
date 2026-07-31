@@ -1,6 +1,6 @@
 {
   "name": "@dmfaster/local-auth",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shared secure local authentication for DM Faster agent clients.",
   "license": "Apache-2.0",
   "author": "DM Faster",

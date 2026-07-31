@@ -18,7 +18,7 @@ import {
   type AgentToolDefinition,
 } from "./tools.ts";
 
-export const MCP_SERVER_VERSION = "0.1.0";
+export const MCP_SERVER_VERSION = "0.1.1";
 export const DEFAULT_MCP_API_URL = DEFAULT_DMFASTER_API_URL;
 
 function asStructuredContent(result: AgentToolResult) {

@@ -5,7 +5,7 @@ This reference describes the read-only v1 surface. Each tool requires exactly th
 For CLI fallback, prefix every command in the table with:
 
 ```text
-npx --yes @dmfaster/cli@0.1.0
+npx --yes @dmfaster/cli@0.1.1
 ```
 
 | MCP tool | HTTP tool | CLI suffix | Required scope | Input |

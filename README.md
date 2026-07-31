@@ -35,7 +35,7 @@ claude plugin install dmfaster@dmfaster-agents
 Authenticate with your normal DM Faster account:
 
 ```bash
-npx --yes @dmfaster/cli@0.1.0 auth login --json
+npx --yes @dmfaster/cli@0.1.1 auth login --json
 ```
 
 The focused browser page shows the exact workspace, expiry, scopes, and a
@@ -48,8 +48,8 @@ configuration file.
 The same public packages can be used without the plugin:
 
 ```bash
-npx --yes @dmfaster/cli@0.1.0 workspace briefing --json
-npx --yes @dmfaster/mcp-server@0.1.0
+npx --yes @dmfaster/cli@0.1.1 workspace briefing --json
+npx --yes @dmfaster/mcp-server@0.1.1
 ```
 
 The MCP server exposes exactly seven read-only tools:

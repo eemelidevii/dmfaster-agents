@@ -25,7 +25,7 @@ import {
 
 import { resolveCliConfig, type ResolvedCliConfig } from "./config.ts";
 
-export const CLI_VERSION = "0.1.0";
+export const CLI_VERSION = "0.1.1";
 
 const HELP = `DM Faster CLI ${CLI_VERSION}
 

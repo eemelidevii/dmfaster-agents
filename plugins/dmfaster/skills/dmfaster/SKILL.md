@@ -1,11 +1,13 @@
 ---
 name: dmfaster
-description: Inspect a DM Faster sales workspace through official read-only MCP tools or CLI. Use for workspace priorities, campaign performance, sending health, replies, pipeline, company history, agent setup or authentication, and DM Faster action requests that must be refused while the interface is read-only. Reject browser-cookie, database, browser-worker-token, and generic HTTP workarounds.
+description: Inspect a user's live DM Faster sales workspace through official read-only MCP tools or CLI. Use when the user explicitly asks for current workspace priorities, campaign performance, sending health, replies, pipeline, company history, or agent setup and authentication; also use to refuse DM Faster action requests while the interface is read-only. Do not use for repository source debugging, implementation, code review, tests, migrations, deployments, extension-runtime diagnosis, or local development unless the user explicitly requests live workspace evidence. Reject browser-cookie, database, browser-worker-token, and generic HTTP workarounds.
 ---
 
 # DM Faster
 
-Use DM Faster's public agent interface as the only source for live product data. The current interface is read-only: it can inspect the workspace but cannot create, change, launch, pause, send, schedule, book, or spend.
+Use DM Faster's public agent interface as the only source for live product data. This skill is a customer workspace interface, not a repository-development interface. If a source-checkout task asks to debug, implement, review, test, migrate, or deploy DM Faster, use that repository's code and development guidance instead unless the user explicitly requests live workspace evidence.
+
+The current interface is read-only: it can inspect the workspace but cannot create, change, launch, pause, send, schedule, book, or spend.
 
 ## Connect
 
