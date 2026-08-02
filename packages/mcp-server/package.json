@@ -42,13 +42,13 @@
   "devDependencies": {
     "@dmfaster/product-ui": "0.1.0",
     "@tailwindcss/cli": "4.3.3",
-    "@types/node": "24.13.3",
+    "@types/node": "26.1.2",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "esbuild": "0.25.12",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwindcss": "4.3.3",
-    "typescript": "5.9.3"
+    "typescript": "7.0.2"
   }
 }
