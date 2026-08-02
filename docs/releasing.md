@@ -13,37 +13,23 @@ Both require an explicitly reviewed version on public `main`.
 4. The production browser-authorization and action-approval backend is healthy.
 5. GitHub environments and npm publishing identities are configured.
 
-## First publication
+## npm package release
 
-The initial public package release is `1.0.0`. It uses
-`.github/workflows/agent-packages-bootstrap.yml` because npm trusted publishing
-cannot be configured until each package exists.
+All four `@dmfaster` package names already exist on npm. Do not recreate a
+token-based bootstrap path. Each package must trust GitHub Actions with these
+exact settings:
 
-Create a short-lived granular npm token scoped only to the `@dmfaster`
-organization, add it temporarily as the `NPM_TOKEN` secret in the
-`npm-bootstrap` environment, and dispatch the workflow from `main` with:
+- repository: `eemelidevii/dmfaster-agents`;
+- workflow: `agent-packages-release.yml`;
+- environment: `npm-packages`;
+- allowed action: `npm publish`.
 
-- `version`: `1.0.0`
-- `confirmation`: `bootstrap @dmfaster packages 1.0.0`
-
-The workflow publishes the exact packed artifacts with npm provenance. After it
-passes:
-
-1. verify integrity and provenance for all four packages;
-2. delete the GitHub `NPM_TOKEN` secret;
-3. revoke the temporary npm token;
-4. configure npm trusted publishing for each package against
-   `eemelidevii/dmfaster-agents`, `agent-packages-release.yml`, the
-   `npm-packages` environment, and the `npm publish` action.
-
-Restrict both GitHub publishing environments to `main`. For a sole-owner
+Restrict the `npm-packages` GitHub environment to `main`. For a sole-owner
 repository, keep the exact workflow confirmation, immutable source ref,
-environment-scoped credential, and provenance checks as the release gate; do
-not create a nominal second account solely to approve the owner's release. If
-another maintainer is granted repository access, add that maintainer as the
-required reviewer and prevent self-review for both publishing environments.
-
-## Later releases
+environment boundary, and provenance checks as the release gate; do not create
+a nominal second account solely to approve the owner's release. If another
+maintainer is granted repository access, add that maintainer as the required
+reviewer and prevent self-review.
 
 Dispatch `.github/workflows/agent-packages-release.yml` from `main` with:
 
@@ -51,7 +37,11 @@ Dispatch `.github/workflows/agent-packages-release.yml` from `main` with:
 - `publish @dmfaster packages VERSION`.
 
 That workflow has no npm-token fallback. It obtains a short-lived npm
-credential through GitHub OIDC.
+credential through GitHub OIDC. After it passes, verify the exact version,
+SHA-512 integrity, SLSA provenance, repository metadata, and a clean registry
+install for all four packages. Keep npm package publishing access set to
+require two-factor authentication and disallow bypass-2FA tokens; trusted OIDC
+publishing continues to work with that restriction.
 
 ## Plugin marketplace release
 
@@ -89,4 +79,4 @@ an npm or GitHub URL as though it were a hosted MCP endpoint.
 
 Never overwrite or routinely unpublish a release. Deprecate an incorrect
 version, fix forward with a new patch version, and repeat the full review and
-release. Revoke any temporary bootstrap credential immediately after use.
+release. Never restore a persistent npm write-token fallback.

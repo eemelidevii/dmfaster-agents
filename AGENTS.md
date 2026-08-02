@@ -56,10 +56,9 @@ shared Codex, Claude, and Cursor plugin.
 ## Release safety
 
 - Never run raw `npm publish` from a workstation.
-- First publication uses the guarded bootstrap workflow with a temporary,
-  granular npm credential and provenance.
-- Later releases use trusted publishing through
-  `.github/workflows/agent-packages-release.yml`.
+- Package releases use trusted publishing through
+  `.github/workflows/agent-packages-release.yml`; never restore an npm write
+  token or bootstrap fallback.
 - npm versions are immutable. Fix mistakes with a new patch version.
 - Package publication and marketplace submissions require explicit user
   approval in the active task.
