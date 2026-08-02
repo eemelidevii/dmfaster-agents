@@ -1,8 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dmfaster",
-  "version": "0.1.1",
-  "description": "Inspect a live DM Faster sales workspace through seven official read-only tools.",
+  "version": "1.0.0",
+  "description": "Plan campaigns, prepare private drafts, inspect live sales activity, and run human-approved campaign controls through DM Faster Agent 1.0.",
   "author": {
     "name": "DM Faster",
     "url": "https://dmfaster.com"

@@ -1,8 +1,9 @@
-import type {
-  AgentToolDataMap,
-  AgentToolInputMap,
-  AgentToolName,
-  AgentToolResult,
+import {
+  AGENT_TOOL_POLICIES,
+  type AgentToolDataMap,
+  type AgentToolInputMap,
+  type AgentToolName,
+  type AgentToolResult,
 } from "./contracts.ts";
 import {
   DmfasterHttpError,
@@ -11,7 +12,7 @@ import {
   DmfasterTimeoutError,
 } from "./errors.ts";
 
-const DEFAULT_TIMEOUT_MS = 15_000;
+const DEFAULT_TIMEOUT_MS = 45_000;
 
 export type DmfasterClientOptions = {
   baseUrl: string;
@@ -41,8 +42,17 @@ function normalizeBaseUrl(value: string) {
       "invalid_base_url",
     );
   }
-  if (url.search || url.hash) {
-    throw new DmfasterSdkError("DM Faster base URL cannot include a query string or fragment.", "invalid_base_url");
+  if (url.username || url.password || url.search || url.hash) {
+    throw new DmfasterSdkError(
+      "DM Faster base URL cannot include credentials, a query string, or a fragment.",
+      "invalid_base_url",
+    );
+  }
+  if (url.pathname !== "/") {
+    throw new DmfasterSdkError(
+      "DM Faster base URL must be an origin without a pathname.",
+      "invalid_base_url",
+    );
   }
   return url.toString().replace(/\/+$/, "");
 }
@@ -72,6 +82,37 @@ function errorMessageFromBody(body: unknown, status: number) {
   return `DM Faster API request failed with HTTP ${status}.`;
 }
 
+function boundedTransportString(value: unknown, maxLength: number) {
+  return typeof value === "string" && value.trim() && value.length <= maxLength
+    ? value.trim()
+    : null;
+}
+
+function transportErrorFromBody(body: unknown) {
+  const error = isRecord(body) && isRecord(body.error) ? body.error : null;
+  return {
+    code: boundedTransportString(error?.code, 100),
+    retryable: typeof error?.retryable === "boolean" ? error.retryable : null,
+    requestId: boundedTransportString(error?.requestId, 128),
+    details: isRecord(error?.details) ? error.details : null,
+  };
+}
+
+function parseRetryAfterSeconds(value: string | null) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+  if (/^\d+$/.test(normalized)) {
+    const seconds = Number(normalized);
+    return Number.isSafeInteger(seconds) && seconds >= 0
+      ? Math.min(seconds, 24 * 60 * 60)
+      : null;
+  }
+  const retryAt = Date.parse(normalized);
+  return Number.isFinite(retryAt)
+    ? Math.min(24 * 60 * 60, Math.max(0, Math.ceil((retryAt - Date.now()) / 1_000)))
+    : null;
+}
+
 async function readJson(response: Response) {
   const text = await response.text();
   if (!text) return null;
@@ -96,7 +137,34 @@ function assertToolResult<Name extends AgentToolName>(
       `DM Faster API returned an incomplete result envelope for ${expectedTool}.`,
     );
   }
-  if (value.error !== null && !isRecord(value.error)) {
+  const expectedPolicy = AGENT_TOOL_POLICIES[expectedTool];
+  if (
+    !isRecord(value.policy)
+    || Object.keys(value.policy).length !== 3
+    || value.policy.effect !== expectedPolicy.effect
+    || value.policy.approval !== expectedPolicy.approval
+    || value.policy.exposure !== expectedPolicy.exposure
+  ) {
+    throw new DmfasterProtocolError(
+      `DM Faster API returned an unsafe result policy for ${expectedTool}.`,
+    );
+  }
+  if (
+    typeof value.generatedAt !== "string"
+    || !Number.isFinite(Date.parse(value.generatedAt))
+    || typeof value.durationMs !== "number"
+    || !Number.isFinite(value.durationMs)
+    || value.durationMs < 0
+    || value.durationMs > 120_000
+  ) {
+    throw new DmfasterProtocolError(
+      `DM Faster API returned invalid result metadata for ${expectedTool}.`,
+    );
+  }
+  if (
+    (value.ok && value.error !== null)
+    || (!value.ok && (!isRecord(value.error) || value.data !== null))
+  ) {
     throw new DmfasterProtocolError(
       `DM Faster API returned an invalid error envelope for ${expectedTool}.`,
     );
@@ -157,10 +225,17 @@ export class DmfasterClient {
       );
       const body = await readJson(response);
       if (!response.ok) {
+        const transportError = transportErrorFromBody(body);
         throw new DmfasterHttpError({
           message: errorMessageFromBody(body, response.status),
           status: response.status,
           responseBody: body,
+          ...(transportError.code ? { code: transportError.code } : {}),
+          retryable: transportError.retryable,
+          requestId: transportError.requestId
+            ?? boundedTransportString(response.headers.get("x-request-id"), 128),
+          retryAfterSeconds: parseRetryAfterSeconds(response.headers.get("retry-after")),
+          details: transportError.details,
         });
       }
       assertToolResult(body, tool);

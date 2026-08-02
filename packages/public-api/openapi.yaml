@@ -3,9 +3,12 @@ info:
   title: DM Faster Agent API
   version: 1.0.0
   description: |
-    The stable, read-only API used by DM Faster agent clients. Every token is bound
-    to one workspace. This version can inspect state but cannot create, modify,
-    launch, send, schedule, or delete anything.
+    The stable API used by DM Faster agent clients. Every token is bound to one
+    workspace. Campaign planning and private drafts use the same authoritative
+    domain services as the app. Launch and pause require a separate, short-lived
+    human approval bound to an exact campaign version and idempotency key.
+    Browser-based launches first return a resumable setup handoff when no fresh
+    browser worker is connected.
   license:
     name: Proprietary
 servers:
@@ -15,7 +18,7 @@ tags:
   - name: Agent authentication
     description: Browser-approved login and revocation for local agent clients.
   - name: Agent tools
-    description: Read-only, bounded tools backed by authoritative DM Faster services.
+    description: Bounded tools backed by authoritative DM Faster domain services.
 security:
   - bearerAuth: []
 x-dmfaster-scopes:
@@ -24,6 +27,9 @@ x-dmfaster-scopes:
   "sending:read": Read browser-worker and sending health.
   "inbox:read": Read reply-attention data from the unified inbox.
   "pipeline:read": Read pipeline summaries and company outreach history.
+  "audiences:read": Resolve industries and preview exact company audiences.
+  "campaigns:write": Validate plans, prepare private drafts, and request confirmed pauses.
+  "campaigns:launch": Request and execute separately approved campaign launches.
 paths:
   /api/v1/agent/auth/device:
     post:
@@ -360,6 +366,244 @@ paths:
         "500": { $ref: "#/components/responses/InternalServerError" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
+  /api/v1/agent/tools/industry.lookup:
+    post:
+      tags: [Agent tools]
+      operationId: industryLookup
+      summary: Resolve an industry into official TOL selections
+      description: Returns a grounded resolution, clarification, or unsupported verdict. Read-only.
+      x-dmfaster-effect: read
+      x-dmfaster-required-scopes: ["audiences:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IndustryLookupInput" }
+      responses:
+        "200":
+          description: Industry resolution.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IndustryLookupResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/campaign.validate:
+    post:
+      tags: [Agent tools]
+      operationId: campaignValidate
+      summary: Validate a structured campaign plan
+      description: Validates campaign readiness and capabilities without changing workspace data.
+      x-dmfaster-effect: read
+      x-dmfaster-required-scopes: ["audiences:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CampaignValidateInput" }
+      responses:
+        "200":
+          description: Campaign validation result.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CampaignValidateResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/audience.preview:
+    post:
+      tags: [Agent tools]
+      operationId: audiencePreview
+      summary: Preview an exact company audience
+      description: Returns bounded company samples and an exact total without changing workspace data.
+      x-dmfaster-effect: read
+      x-dmfaster-required-scopes: ["audiences:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AudiencePreviewInput" }
+      responses:
+        "200":
+          description: Exact audience preview.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AudiencePreviewResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/list.prepare:
+    post:
+      tags: [Agent tools]
+      operationId: listPrepare
+      summary: Prepare an idempotent private company list
+      description: Requires an exact audience and creates only a private workspace list.
+      x-dmfaster-effect: draft
+      x-dmfaster-required-scopes: ["audiences:read", "campaigns:write"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListPrepareInput" }
+      responses:
+        "200":
+          description: Private list preparation result.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListPrepareResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/campaign.prepare:
+    post:
+      tags: [Agent tools]
+      operationId: campaignPrepare
+      summary: Prepare an idempotent disabled campaign draft
+      description: Creates a private company list and disabled campaign draft. Nothing is sent.
+      x-dmfaster-effect: draft
+      x-dmfaster-required-scopes: ["audiences:read", "campaigns:write"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CampaignPrepareInput" }
+      responses:
+        "200":
+          description: Private campaign preparation result.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CampaignPrepareResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/campaign.launch.preflight:
+    post:
+      tags: [Agent tools]
+      operationId: campaignLaunchPreflight
+      summary: Preflight one exact campaign launch
+      description: Validates readiness. Returns a resumable browser-setup handoff when browser sending is unavailable; otherwise creates or returns a short-lived owner approval request.
+      x-dmfaster-effect: write
+      x-dmfaster-required-scopes: ["campaigns:launch"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CampaignActionPreflightInput" }
+      responses:
+        "200":
+          description: Resumable browser setup or launch approval result.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CampaignLaunchPreflightResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/campaign.launch:
+    post:
+      tags: [Agent tools]
+      operationId: campaignLaunch
+      summary: Execute a human-approved campaign launch
+      description: Starts only the exact campaign version bound to an approved authorization.
+      x-dmfaster-effect: external
+      x-dmfaster-required-scopes: ["campaigns:launch"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CampaignActionInput" }
+      responses:
+        "200":
+          description: Verified launch result.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CampaignLaunchResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/campaign.pause.preflight:
+    post:
+      tags: [Agent tools]
+      operationId: campaignPausePreflight
+      summary: Preflight one exact campaign pause
+      description: Validates current state and creates a short-lived owner approval request.
+      x-dmfaster-effect: write
+      x-dmfaster-required-scopes: ["campaigns:write"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CampaignActionPreflightInput" }
+      responses:
+        "200":
+          description: Pause preflight and human approval URL.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CampaignPausePreflightResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/agent/tools/campaign.pause:
+    post:
+      tags: [Agent tools]
+      operationId: campaignPause
+      summary: Execute a human-approved campaign pause
+      description: Pauses only the exact campaign version bound to an approved authorization.
+      x-dmfaster-effect: write
+      x-dmfaster-required-scopes: ["campaigns:write"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CampaignActionInput" }
+      responses:
+        "200":
+          description: Verified pause result.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CampaignPauseResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -547,6 +791,9 @@ components:
         - sending:read
         - inbox:read
         - pipeline:read
+        - audiences:read
+        - campaigns:write
+        - campaigns:launch
 
     AgentDeviceAuthorizationInput:
       type: object
@@ -579,7 +826,7 @@ components:
         scopes:
           type: array
           minItems: 1
-          maxItems: 5
+          maxItems: 8
           uniqueItems: true
           items:
             $ref: "#/components/schemas/AgentApiScope"
@@ -654,7 +901,7 @@ components:
         scopes:
           type: array
           minItems: 1
-          maxItems: 5
+          maxItems: 8
           uniqueItems: true
           items:
             $ref: "#/components/schemas/AgentApiScope"
@@ -775,18 +1022,27 @@ components:
         - replies.list
         - pipeline.inspect
         - company.timeline
+        - industry.lookup
+        - campaign.validate
+        - audience.preview
+        - list.prepare
+        - campaign.prepare
+        - campaign.launch.preflight
+        - campaign.launch
+        - campaign.pause.preflight
+        - campaign.pause
 
-    ReadToolPolicy:
+    AgentToolPolicy:
       type: object
       additionalProperties: false
       required: [effect, approval, exposure]
       properties:
         effect:
           type: string
-          const: read
+          enum: [read, draft, write, external]
         approval:
           type: string
-          const: none
+          enum: [none, human_confirmation]
         exposure:
           type: string
           const: public_api
@@ -865,7 +1121,7 @@ components:
         tool:
           $ref: "#/components/schemas/AgentToolName"
         policy:
-          $ref: "#/components/schemas/ReadToolPolicy"
+          $ref: "#/components/schemas/AgentToolPolicy"
         ok:
           type: boolean
         generatedAt:
@@ -967,6 +1223,105 @@ components:
                 - $ref: "#/components/schemas/CompanyTimelineOutput"
                 - type: "null"
 
+    IndustryLookupResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: industry.lookup }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/IndustryLookupOutput"
+                - type: "null"
+
+    CampaignValidateResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: campaign.validate }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/AgentHarnessResult"
+                - type: "null"
+
+    AudiencePreviewResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: audience.preview }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/AgentHarnessResult"
+                - type: "null"
+
+    ListPrepareResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: list.prepare }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/AgentHarnessResult"
+                - type: "null"
+
+    CampaignPrepareResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: campaign.prepare }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/AgentHarnessResult"
+                - type: "null"
+
+    CampaignLaunchPreflightResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: campaign.launch.preflight }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/CampaignActionPreflightOutput"
+                - type: "null"
+
+    CampaignLaunchResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: campaign.launch }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/CampaignActionOutput"
+                - type: "null"
+
+    CampaignPausePreflightResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: campaign.pause.preflight }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/CampaignActionApprovalRequiredOutput"
+                - type: "null"
+
+    CampaignPauseResult:
+      allOf:
+        - $ref: "#/components/schemas/AgentToolResultBase"
+        - type: object
+          properties:
+            tool: { type: string, const: campaign.pause }
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/CampaignActionOutput"
+                - type: "null"
+
     WorkspaceBriefingInput:
       type: object
       additionalProperties: false
@@ -1018,6 +1373,84 @@ components:
         companyOutreachId:
           $ref: "#/components/schemas/ResourceId"
 
+    IndustryLookupInput:
+      type: object
+      additionalProperties: false
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 800
+          pattern: ".*\\S.*"
+        version:
+          oneOf:
+            - $ref: "#/components/schemas/TolVersion"
+            - type: "null"
+        language:
+          type: string
+          enum: [en, fi]
+
+    CampaignValidateInput:
+      type: object
+      additionalProperties: false
+      required: [state]
+      properties:
+        state:
+          $ref: "#/components/schemas/AgentCampaignState"
+
+    AudiencePreviewInput:
+      type: object
+      additionalProperties: false
+      required: [state]
+      properties:
+        state:
+          $ref: "#/components/schemas/AgentCampaignState"
+        sampleSize:
+          type: integer
+          minimum: 1
+          maximum: 25
+
+    ListPrepareInput:
+      type: object
+      additionalProperties: false
+      required: [state]
+      properties:
+        state:
+          $ref: "#/components/schemas/AgentCampaignState"
+        sampleSize:
+          type: integer
+          minimum: 1
+          maximum: 25
+        idempotencyKey:
+          $ref: "#/components/schemas/IdempotencyKey"
+
+    CampaignPrepareInput:
+      $ref: "#/components/schemas/ListPrepareInput"
+
+    CampaignActionPreflightInput:
+      type: object
+      additionalProperties: false
+      required: [campaignId, idempotencyKey]
+      properties:
+        campaignId:
+          $ref: "#/components/schemas/ResourceId"
+        idempotencyKey:
+          $ref: "#/components/schemas/IdempotencyKey"
+
+    CampaignActionInput:
+      type: object
+      additionalProperties: false
+      required: [campaignId, idempotencyKey, authorizationId]
+      properties:
+        campaignId:
+          $ref: "#/components/schemas/ResourceId"
+        idempotencyKey:
+          $ref: "#/components/schemas/IdempotencyKey"
+        authorizationId:
+          type: string
+          pattern: '^agent_action_[a-f0-9]{32}$'
+
     OptionalCampaignInput:
       type: object
       additionalProperties: false
@@ -1032,6 +1465,444 @@ components:
       minLength: 1
       maxLength: 160
       pattern: ".*\\S.*"
+
+    IdempotencyKey:
+      type: string
+      minLength: 1
+      maxLength: 160
+      pattern: '^[A-Za-z0-9._:-]{1,160}$'
+
+    TolVersion:
+      type: string
+      enum: ["2008", "2025"]
+
+    SupportedCountry:
+      type: string
+      enum:
+        - FI
+        - NO
+        - EE
+        - SE
+        - DK
+        - UK
+        - IE
+        - AE
+        - AT
+        - BE
+        - CA
+        - NL
+        - NZ
+        - ES
+        - FR
+        - HK
+        - IL
+        - LV
+        - LT
+        - IT
+        - CH
+        - PT
+        - SA
+        - SG
+        - IS
+        - AU
+        - DE
+        - US
+        - ZA
+
+    AgentCampaignState:
+      type: object
+      additionalProperties: false
+      required: [profile, brief]
+      properties:
+        profile:
+          $ref: "#/components/schemas/AgentBusinessProfile"
+        brief:
+          $ref: "#/components/schemas/AgentCampaignBrief"
+
+    AgentBusinessProfile:
+      type: object
+      additionalProperties: false
+      required:
+        - version
+        - businessName
+        - websiteUrl
+        - businessDescription
+        - offer
+        - customerOutcome
+        - differentiators
+        - proofPoints
+        - preferredTone
+        - preferredLanguages
+        - defaultCountries
+        - excludedCompanyTraits
+      properties:
+        version: { type: integer, const: 1 }
+        businessName: { type: string }
+        websiteUrl: { type: string }
+        businessDescription: { type: string }
+        offer: { type: string }
+        customerOutcome: { type: string }
+        differentiators:
+          type: array
+          items: { type: string }
+        proofPoints:
+          type: array
+          items: { type: string }
+        preferredTone: { type: string }
+        preferredLanguages:
+          type: array
+          items: { type: string }
+        defaultCountries:
+          type: array
+          items: { $ref: "#/components/schemas/SupportedCountry" }
+        excludedCompanyTraits:
+          type: array
+          items: { type: string }
+
+    AgentCampaignBrief:
+      type: object
+      additionalProperties: false
+      required:
+        - version
+        - objective
+        - offer
+        - targetDescription
+        - countries
+        - industryCodes
+        - decisionMakerRoles
+        - companySize
+        - requestedSignals
+        - exclusions
+        - callToAction
+        - requestedChannels
+        - messageLanguage
+        - tone
+        - dailyVolume
+        - deliverySettings
+        - outreachMessages
+      properties:
+        version: { type: integer, const: 1 }
+        objective: { type: string }
+        offer: { type: string }
+        targetDescription: { type: string }
+        countries:
+          type: array
+          items: { $ref: "#/components/schemas/SupportedCountry" }
+        cities:
+          type: array
+          maxItems: 32
+          items: { type: string, minLength: 1, maxLength: 80 }
+        industryCodes:
+          type: array
+          items: { type: string }
+        industryResolution:
+          $ref: "#/components/schemas/AgentIndustryResolution"
+        decisionMakerRoles:
+          type: array
+          items: { type: string }
+        companySize:
+          $ref: "#/components/schemas/AgentCompanySize"
+        googleAdsActivityWindow:
+          oneOf:
+            - { type: string, enum: [last_30_days, last_90_days, last_12_months] }
+            - type: "null"
+        metaAdsFilter:
+          oneOf:
+            - $ref: "#/components/schemas/AgentMetaAdsFilter"
+            - type: "null"
+        requestedSignals:
+          type: array
+          items: { $ref: "#/components/schemas/AgentSignalCriterion" }
+        exclusions:
+          type: array
+          items: { type: string }
+        unsupportedCriteria:
+          type: array
+          maxItems: 8
+          items: { type: string, maxLength: 160 }
+        callToAction: { type: string }
+        requestedChannels:
+          type: array
+          items: { $ref: "#/components/schemas/TargetChannel" }
+        messageLanguage: { type: string }
+        tone: { type: string }
+        dailyVolume:
+          oneOf:
+            - { type: number }
+            - type: "null"
+        deliverySettings:
+          $ref: "#/components/schemas/AgentCampaignDeliverySettings"
+        outreachMessages:
+          type: array
+          items: { $ref: "#/components/schemas/AgentOutreachMessage" }
+
+    AgentCompanySize:
+      type: object
+      additionalProperties: false
+      required: [employeeMin, employeeMax, revenueMinEur, revenueMaxEur]
+      properties:
+        employeeMin:
+          oneOf: [{ type: number }, { type: "null" }]
+        employeeMax:
+          oneOf: [{ type: number }, { type: "null" }]
+        revenueMinEur:
+          oneOf: [{ type: number }, { type: "null" }]
+        revenueMaxEur:
+          oneOf: [{ type: number }, { type: "null" }]
+
+    AgentMetaAdsFilter:
+      type: object
+      additionalProperties: false
+      required: [minimumEuReach, targetAge, targetGender, targetLocation, includeUncorroborated]
+      properties:
+        minimumEuReach:
+          oneOf: [{ type: integer, minimum: 0, maximum: 100000000 }, { type: "null" }]
+        targetAge:
+          oneOf: [{ type: integer, minimum: 13, maximum: 65 }, { type: "null" }]
+        targetGender:
+          oneOf: [{ type: string, enum: [all, men, women] }, { type: "null" }]
+        targetLocation: { type: string, maxLength: 80 }
+        includeUncorroborated: { type: boolean }
+
+    AgentSignalCriterion:
+      type: object
+      additionalProperties: false
+      required: [key, required, description]
+      properties:
+        key:
+          type: string
+          enum: [recent_funding, active_hiring, leadership_change, technology_usage, content_activity, purchase_intent]
+        required: { type: boolean }
+        description: { type: string }
+
+    AgentCampaignDeliverySettings:
+      type: object
+      additionalProperties: false
+      required: [dailyCap, windowStart, windowEnd, weekdays, timezone, confirmed]
+      properties:
+        dailyCap:
+          oneOf: [{ type: number }, { type: "null" }]
+        windowStart: { type: string }
+        windowEnd: { type: string }
+        weekdays: { type: integer, minimum: 1, maximum: 127 }
+        timezone: { type: string }
+        confirmed: { type: boolean }
+
+    AgentOutreachMessage:
+      type: object
+      additionalProperties: false
+      required: [channels, subject, body, origin]
+      properties:
+        channels:
+          type: array
+          items: { $ref: "#/components/schemas/TargetChannel" }
+        subject: { type: string }
+        body: { type: string }
+        origin:
+          type: string
+          enum: [user, user_requested_generation, agent_draft, user_approved_generation]
+
+    AgentIndustryCodeSelection:
+      type: object
+      additionalProperties: false
+      required: [classification, version, codes]
+      properties:
+        classification: { type: string, const: TOL }
+        version: { $ref: "#/components/schemas/TolVersion" }
+        codes:
+          type: array
+          maxItems: 64
+          items: { type: string, maxLength: 5 }
+
+    AgentIndustryClarificationOption:
+      type: object
+      additionalProperties: false
+      required: [id, label, selections]
+      properties:
+        id: { type: string, maxLength: 80 }
+        label: { type: string, maxLength: 180 }
+        selections:
+          type: array
+          maxItems: 2
+          items: { $ref: "#/components/schemas/AgentIndustryCodeSelection" }
+
+    AgentIndustryResolution:
+      type: object
+      additionalProperties: false
+      required: [status, sourceText, resolvedLabel, primaryVersion, selections, question, options, evidence]
+      properties:
+        status: { type: string, enum: [resolved, needs_clarification, unsupported] }
+        sourceText: { type: string, maxLength: 800 }
+        resolvedLabel: { type: string, maxLength: 240 }
+        primaryVersion: { $ref: "#/components/schemas/TolVersion" }
+        selections:
+          type: array
+          maxItems: 2
+          items: { $ref: "#/components/schemas/AgentIndustryCodeSelection" }
+        question: { type: string, maxLength: 500 }
+        options:
+          type: array
+          maxItems: 3
+          items: { $ref: "#/components/schemas/AgentIndustryClarificationOption" }
+        evidence:
+          type: array
+          maxItems: 12
+          items: { type: string, maxLength: 120 }
+
+    IndustryLookupOutput:
+      type: object
+      additionalProperties: false
+      required: [resolution]
+      properties:
+        resolution:
+          $ref: "#/components/schemas/AgentIndustryResolution"
+
+    AgentHarnessResult:
+      type: object
+      additionalProperties: false
+      required: [version, action, status, executionMode, summary, blockers, allowedNextActions, resourceRefs, approval, data]
+      properties:
+        version: { type: integer, const: 1 }
+        action:
+          type: string
+          enum: [get_workspace_capabilities, validate_campaign_plan, preview_audience, prepare_list, prepare_campaign, preflight_campaign_launch, launch_campaign, pause_campaign]
+        status:
+          type: string
+          enum: [success, needs_input, needs_approval, blocked, failed]
+        executionMode:
+          type: string
+          enum: [read_only, simulation, live]
+        summary: { type: string }
+        blockers:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [code, message, recoverable]
+            properties:
+              code: { type: string }
+              message: { type: string }
+              recoverable: { type: boolean }
+        allowedNextActions:
+          type: array
+          items: { type: string }
+        resourceRefs:
+          type: object
+          additionalProperties: false
+          properties:
+            targetListId: { type: string }
+            campaignId: { type: string }
+        approval:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: "null"
+        data: {}
+
+    AgentCampaignAction:
+      type: string
+      enum: [campaign.launch, campaign.pause]
+
+    AgentActionSnapshot:
+      type: object
+      additionalProperties: false
+      required: [campaignId, campaignName, campaignStatus, campaignUpdatedAt, targetListId, targetCount, channels, dailyCap]
+      properties:
+        campaignId: { type: string }
+        campaignName: { type: string }
+        campaignStatus: { $ref: "#/components/schemas/CampaignStatus" }
+        campaignUpdatedAt: { type: string, format: date-time }
+        targetListId: { type: string }
+        targetCount: { type: integer, minimum: 0 }
+        channels:
+          type: array
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/TargetChannel" }
+        dailyCap: { type: integer, minimum: 0 }
+
+    AgentActionAuthorization:
+      type: object
+      additionalProperties: false
+      required: [id, action, campaignId, commandId, confirmationCode, status, expiresAt, approvedAt, deniedAt, consumedAt, snapshot]
+      properties:
+        id: { type: string, pattern: '^agent_action_[a-f0-9]{32}$' }
+        action: { $ref: "#/components/schemas/AgentCampaignAction" }
+        campaignId: { type: string }
+        commandId: { type: string }
+        confirmationCode: { type: string, pattern: '^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$' }
+        status: { type: string, enum: [pending, approved, denied, consumed, expired] }
+        expiresAt: { type: string, format: date-time }
+        approvedAt: { type: string }
+        deniedAt: { type: string }
+        consumedAt: { type: string }
+        snapshot: { $ref: "#/components/schemas/AgentActionSnapshot" }
+
+    CampaignActionApprovalRequiredOutput:
+      type: object
+      additionalProperties: false
+      required: [status, authorization, approvalUrl]
+      properties:
+        status: { type: string, const: approval_required }
+        authorization: { $ref: "#/components/schemas/AgentActionAuthorization" }
+        approvalUrl: { type: string, format: uri }
+
+    BrowserWorkerSetupResume:
+      type: object
+      additionalProperties: false
+      required: [tool, input]
+      properties:
+        tool: { type: string, const: campaign.launch.preflight }
+        input: { $ref: "#/components/schemas/CampaignActionPreflightInput" }
+
+    BrowserWorkerSetupRequirement:
+      type: object
+      additionalProperties: false
+      required: [code, state, setupUrl, message, userActionRequired, campaignChannels, resume]
+      properties:
+        code: { type: string, const: browser_worker_required }
+        state:
+          type: string
+          enum: [not_connected, offline]
+        setupUrl: { type: string, format: uri }
+        message:
+          type: string
+          minLength: 1
+          maxLength: 500
+        userActionRequired: { type: boolean, const: true }
+        campaignChannels:
+          type: array
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/TargetChannel" }
+        resume: { $ref: "#/components/schemas/BrowserWorkerSetupResume" }
+
+    CampaignLaunchSetupRequiredOutput:
+      type: object
+      additionalProperties: false
+      required: [status, setup]
+      properties:
+        status: { type: string, const: setup_required }
+        setup: { $ref: "#/components/schemas/BrowserWorkerSetupRequirement" }
+
+    CampaignActionPreflightOutput:
+      oneOf:
+        - $ref: "#/components/schemas/CampaignActionApprovalRequiredOutput"
+        - $ref: "#/components/schemas/CampaignLaunchSetupRequiredOutput"
+      discriminator:
+        propertyName: status
+        mapping:
+          approval_required: "#/components/schemas/CampaignActionApprovalRequiredOutput"
+          setup_required: "#/components/schemas/CampaignLaunchSetupRequiredOutput"
+
+    CampaignActionOutput:
+      type: object
+      additionalProperties: false
+      required: [action, campaign, authorizationId, idempotencyKey, replayed]
+      properties:
+        action: { $ref: "#/components/schemas/AgentCampaignAction" }
+        campaign: { $ref: "#/components/schemas/AgentActionSnapshot" }
+        authorizationId: { type: string, pattern: '^agent_action_[a-f0-9]{32}$' }
+        idempotencyKey: { $ref: "#/components/schemas/IdempotencyKey" }
+        replayed: { type: boolean }
 
     ErrorResponse:
       type: object

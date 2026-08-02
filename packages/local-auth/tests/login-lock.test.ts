@@ -60,19 +60,22 @@ test("release removes only its owned lock and permits immediate reacquisition", 
       pid: 2001,
     });
     const entries = await readdir(rootDirectory);
-    assert.equal(entries.length, 1);
-    assert.doesNotMatch(entries[0] || "", /dmfaster|app|token|device/i);
-    const metadataPath = join(rootDirectory, entries[0] || "", "owner.json");
+    const lockEntry = entries.find((entry) => entry.endsWith(".lock"));
+    assert.ok(lockEntry);
+    assert.equal(entries.filter((entry) => entry.includes(".lease-")).length, 1);
+    assert.doesNotMatch(lockEntry, /dmfaster|app|token|device/i);
+    const metadataPath = join(rootDirectory, lockEntry, "owner.json");
     const metadata = await readFile(metadataPath, "utf8");
     assert.doesNotMatch(metadata, /dmf_pat_|dmf_device_|https:\/\//);
     assert.deepEqual(Object.keys(JSON.parse(metadata) as object).sort(), [
       "createdAt",
       "expiresAt",
+      "leaseId",
       "ownerId",
       "pid",
       "version",
     ]);
-    assert.equal((await stat(join(rootDirectory, entries[0] || ""))).mode & 0o077, 0);
+    assert.equal((await stat(join(rootDirectory, lockEntry))).mode & 0o077, 0);
 
     await first.release();
     const second = await acquireLoginLock({
@@ -83,7 +86,64 @@ test("release removes only its owned lock and permits immediate reacquisition", 
       pid: 2002,
     });
     await second.release();
-    assert.deepEqual(await readdir(rootDirectory), []);
+    assert.deepEqual((await readdir(rootDirectory)).filter((entry) => entry.endsWith(".lock")), [lockEntry]);
+    assert.equal((await readdir(rootDirectory)).filter((entry) => entry.includes(".lease-")).length, 0);
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
+});
+
+test("release cannot remove a replacement installed after owner validation", async () => {
+  const rootDirectory = await temporaryLockRoot();
+  let currentTime = 20_000;
+  const now = () => currentTime;
+  let validationObserved!: () => void;
+  let allowRelease!: () => void;
+  const validated = new Promise<void>((resolve) => { validationObserved = resolve; });
+  const releaseAllowed = new Promise<void>((resolve) => { allowRelease = resolve; });
+
+  try {
+    const oldLock = await acquireLoginLock({
+      baseUrl: BASE_URL,
+      platform: "linux",
+      rootDirectory,
+      ownerId: "release_race_old",
+      pid: 4001,
+      now,
+      onReleaseValidated: async () => {
+        validationObserved();
+        await releaseAllowed;
+      },
+    });
+
+    const releasing = oldLock.release();
+    await validated;
+
+    currentTime += LOGIN_LOCK_STALE_AFTER_MS + 1;
+    const replacement = await acquireLoginLock({
+      baseUrl: BASE_URL,
+      platform: "linux",
+      rootDirectory,
+      ownerId: "release_race_new",
+      pid: 4002,
+      now,
+    });
+
+    allowRelease();
+    await releasing;
+    await replacement.assertOwned();
+    await assert.rejects(
+      acquireLoginLock({
+        baseUrl: BASE_URL,
+        platform: "linux",
+        rootDirectory,
+        ownerId: "release_race_third",
+        pid: 4003,
+        now,
+      }),
+      LoginAlreadyInProgressError,
+    );
+    await replacement.release();
   } finally {
     await rm(rootDirectory, { recursive: true, force: true });
   }

@@ -11,16 +11,29 @@ export class DmfasterSdkError extends Error {
 export class DmfasterHttpError extends DmfasterSdkError {
   readonly status: number;
   readonly responseBody: unknown;
+  readonly retryable: boolean | null;
+  readonly requestId: string | null;
+  readonly retryAfterSeconds: number | null;
+  readonly details: Record<string, unknown> | null;
 
   constructor(input: {
     message: string;
     status: number;
     responseBody: unknown;
+    code?: string;
+    retryable?: boolean | null;
+    requestId?: string | null;
+    retryAfterSeconds?: number | null;
+    details?: Record<string, unknown> | null;
   }) {
-    super(input.message, "http_error");
+    super(input.message, input.code || "http_error");
     this.name = "DmfasterHttpError";
     this.status = input.status;
     this.responseBody = input.responseBody;
+    this.retryable = input.retryable ?? null;
+    this.requestId = input.requestId ?? null;
+    this.retryAfterSeconds = input.retryAfterSeconds ?? null;
+    this.details = input.details ?? null;
   }
 }
 

@@ -67,7 +67,19 @@ if (!existsSync(skillPath)) {
   if (!/generic HTTP/i.test(source) || !/database access/i.test(source)) {
     fail("SKILL.md must reject generic transport and database workarounds");
   }
-  if (!/read-only/i.test(source)) fail("SKILL.md must state the current read-only boundary");
+  if (!/Agent 1\.0/i.test(source)) fail("SKILL.md must describe the Agent 1.0 surface");
+  if (!/exact audience/i.test(source)) {
+    fail("SKILL.md must preserve the exact-audience invariant");
+  }
+  if (!/server-issued authorization ID/i.test(source) || !/approved: true/i.test(source)) {
+    fail("SKILL.md must require server-issued action authorization and reject boolean approval");
+  }
+  if (!/Never control the approval page/i.test(source)) {
+    fail("SKILL.md must reserve browser approval for the human");
+  }
+  if (!/complete campaign state/i.test(source) || !/stateless/i.test(source)) {
+    fail("SKILL.md must document stateless campaign planning");
+  }
   if (!/not a repository-development interface/i.test(source)) {
     fail("SKILL.md must route source-checkout development back to repository guidance");
   }
@@ -86,9 +98,21 @@ if (!existsSync(skillPath)) {
     "replies_list",
     "pipeline_inspect",
     "company_timeline",
+    "industry_lookup",
+    "campaign_validate",
+    "audience_preview",
+    "list_prepare",
+    "campaign_prepare",
+    "campaign_launch_preflight",
+    "campaign_launch",
+    "campaign_pause_preflight",
+    "campaign_pause",
   ];
   for (const tool of requiredTools) {
     if (!source.includes("`" + tool + "`")) fail(`SKILL.md is missing documented tool ${tool}`);
+  }
+  if (!source.includes("`campaign_workspace`")) {
+    fail("SKILL.md is missing the optional MCP Apps campaign workspace");
   }
 
   for (const match of source.matchAll(/\]\((references\/[^)]+)\)/g)) {
@@ -104,8 +128,8 @@ if (!existsSync(agentPath)) {
 } else {
   const agentSource = readFileSync(agentPath, "utf8");
   if (!/^interface:\s*$/m.test(agentSource)) fail("agents/openai.yaml must define interface metadata");
-  if (!/short_description:\s*"[^"]*read-only[^"]*"/i.test(agentSource)) {
-    fail("agents/openai.yaml must describe the current read-only surface");
+  if (!/short_description:\s*"[^"]*(?:campaign|operate)[^"]*"/i.test(agentSource)) {
+    fail("agents/openai.yaml must describe the Agent 1.0 campaign surface");
   }
   if (!/default_prompt:\s*"[^"]*\$dmfaster[^"]*"/.test(agentSource)) {
     fail("agents/openai.yaml default prompt must explicitly invoke $dmfaster");

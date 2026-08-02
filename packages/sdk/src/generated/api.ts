@@ -81,6 +81,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/tools/audience.preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview an exact company audience
+         * @description Returns bounded company samples and an exact total without changing workspace data.
+         */
+        post: operations["audiencePreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/tools/campaign.inspect": {
         parameters: {
             query?: never;
@@ -96,6 +116,126 @@ export interface paths {
          *     omitted, the selected, active, or most recent campaign is used. Read-only.
          */
         post: operations["campaignInspect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent/tools/campaign.launch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Execute a human-approved campaign launch
+         * @description Starts only the exact campaign version bound to an approved authorization.
+         */
+        post: operations["campaignLaunch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent/tools/campaign.launch.preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preflight one exact campaign launch
+         * @description Validates readiness. Returns a resumable browser-setup handoff when browser sending is unavailable; otherwise creates or returns a short-lived owner approval request.
+         */
+        post: operations["campaignLaunchPreflight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent/tools/campaign.pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Execute a human-approved campaign pause
+         * @description Pauses only the exact campaign version bound to an approved authorization.
+         */
+        post: operations["campaignPause"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent/tools/campaign.pause.preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preflight one exact campaign pause
+         * @description Validates current state and creates a short-lived owner approval request.
+         */
+        post: operations["campaignPausePreflight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent/tools/campaign.prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prepare an idempotent disabled campaign draft
+         * @description Creates a private company list and disabled campaign draft. Nothing is sent.
+         */
+        post: operations["campaignPrepare"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent/tools/campaign.validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate a structured campaign plan
+         * @description Validates campaign readiness and capabilities without changing workspace data.
+         */
+        post: operations["campaignValidate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -136,6 +276,46 @@ export interface paths {
          * @description Returns up to 30 recorded outreach and pipeline events for one company. Read-only.
          */
         post: operations["companyTimeline"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent/tools/industry.lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve an industry into official TOL selections
+         * @description Returns a grounded resolution, clarification, or unsupported verdict. Read-only.
+         */
+        post: operations["industryLookup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent/tools/list.prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prepare an idempotent private company list
+         * @description Requires an exact audience and creates only a private workspace list.
+         */
+        post: operations["listPrepare"];
         delete?: never;
         options?: never;
         head?: never;
@@ -229,8 +409,34 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AgentActionAuthorization: {
+            action: components["schemas"]["AgentCampaignAction"];
+            approvedAt: string;
+            campaignId: string;
+            commandId: string;
+            confirmationCode: string;
+            consumedAt: string;
+            deniedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            id: string;
+            snapshot: components["schemas"]["AgentActionSnapshot"];
+            /** @enum {string} */
+            status: "pending" | "approved" | "denied" | "consumed" | "expired";
+        };
+        AgentActionSnapshot: {
+            campaignId: string;
+            campaignName: string;
+            campaignStatus: components["schemas"]["CampaignStatus"];
+            /** Format: date-time */
+            campaignUpdatedAt: string;
+            channels: components["schemas"]["TargetChannel"][];
+            dailyCap: number;
+            targetCount: number;
+            targetListId: string;
+        };
         /** @enum {string} */
-        AgentApiScope: "workspace:read" | "campaigns:read" | "sending:read" | "inbox:read" | "pipeline:read";
+        AgentApiScope: "workspace:read" | "campaigns:read" | "sending:read" | "inbox:read" | "pipeline:read" | "audiences:read" | "campaigns:write" | "campaigns:launch";
         AgentAuthenticatedParty: {
             /** Format: email */
             email: string;
@@ -253,6 +459,66 @@ export interface components {
                 code: string;
                 message: string;
             };
+        };
+        AgentBusinessProfile: {
+            businessDescription: string;
+            businessName: string;
+            customerOutcome: string;
+            defaultCountries: components["schemas"]["SupportedCountry"][];
+            differentiators: string[];
+            excludedCompanyTraits: string[];
+            offer: string;
+            preferredLanguages: string[];
+            preferredTone: string;
+            proofPoints: string[];
+            /** @constant */
+            version: 1;
+            websiteUrl: string;
+        };
+        /** @enum {string} */
+        AgentCampaignAction: "campaign.launch" | "campaign.pause";
+        AgentCampaignBrief: {
+            callToAction: string;
+            cities?: string[];
+            companySize: components["schemas"]["AgentCompanySize"];
+            countries: components["schemas"]["SupportedCountry"][];
+            dailyVolume: number | null;
+            decisionMakerRoles: string[];
+            deliverySettings: components["schemas"]["AgentCampaignDeliverySettings"];
+            exclusions: string[];
+            googleAdsActivityWindow?: ("last_30_days" | "last_90_days" | "last_12_months") | null;
+            industryCodes: string[];
+            industryResolution?: components["schemas"]["AgentIndustryResolution"];
+            messageLanguage: string;
+            metaAdsFilter?: components["schemas"]["AgentMetaAdsFilter"] | null;
+            objective: string;
+            offer: string;
+            outreachMessages: components["schemas"]["AgentOutreachMessage"][];
+            requestedChannels: components["schemas"]["TargetChannel"][];
+            requestedSignals: components["schemas"]["AgentSignalCriterion"][];
+            targetDescription: string;
+            tone: string;
+            unsupportedCriteria?: string[];
+            /** @constant */
+            version: 1;
+        };
+        AgentCampaignDeliverySettings: {
+            confirmed: boolean;
+            dailyCap: number | null;
+            timezone: string;
+            weekdays: number;
+            windowEnd: string;
+            windowStart: string;
+        };
+        AgentCampaignState: {
+            brief: components["schemas"]["AgentCampaignBrief"];
+            profile: components["schemas"]["AgentBusinessProfile"];
+        };
+        AgentCompanySize: {
+            employeeMax: number | null;
+            employeeMin: number | null;
+            revenueMaxEur: number | null;
+            revenueMinEur: number | null;
         };
         AgentCredential: {
             client: string;
@@ -305,6 +571,53 @@ export interface components {
             user: components["schemas"]["AgentAuthenticatedParty"];
             workspace: components["schemas"]["AgentAuthenticatedParty"];
         };
+        AgentHarnessResult: {
+            /** @enum {string} */
+            action: "get_workspace_capabilities" | "validate_campaign_plan" | "preview_audience" | "prepare_list" | "prepare_campaign" | "preflight_campaign_launch" | "launch_campaign" | "pause_campaign";
+            allowedNextActions: string[];
+            approval: {
+                [key: string]: unknown;
+            } | null;
+            blockers: {
+                code: string;
+                message: string;
+                recoverable: boolean;
+            }[];
+            data: unknown;
+            /** @enum {string} */
+            executionMode: "read_only" | "simulation" | "live";
+            resourceRefs: {
+                campaignId?: string;
+                targetListId?: string;
+            };
+            /** @enum {string} */
+            status: "success" | "needs_input" | "needs_approval" | "blocked" | "failed";
+            summary: string;
+            /** @constant */
+            version: 1;
+        };
+        AgentIndustryClarificationOption: {
+            id: string;
+            label: string;
+            selections: components["schemas"]["AgentIndustryCodeSelection"][];
+        };
+        AgentIndustryCodeSelection: {
+            /** @constant */
+            classification: "TOL";
+            codes: string[];
+            version: components["schemas"]["TolVersion"];
+        };
+        AgentIndustryResolution: {
+            evidence: string[];
+            options: components["schemas"]["AgentIndustryClarificationOption"][];
+            primaryVersion: components["schemas"]["TolVersion"];
+            question: string;
+            resolvedLabel: string;
+            selections: components["schemas"]["AgentIndustryCodeSelection"][];
+            sourceText: string;
+            /** @enum {string} */
+            status: "resolved" | "needs_clarification" | "unsupported";
+        };
         AgentLead: {
             avatarUrl: string;
             campaignId: string;
@@ -316,6 +629,26 @@ export interface components {
             id: string;
             lastContactedAt: string;
             stage: components["schemas"]["PipelineStage"];
+        };
+        AgentMetaAdsFilter: {
+            includeUncorroborated: boolean;
+            minimumEuReach: number | null;
+            targetAge: number | null;
+            targetGender: ("all" | "men" | "women") | null;
+            targetLocation: string;
+        };
+        AgentOutreachMessage: {
+            body: string;
+            channels: components["schemas"]["TargetChannel"][];
+            /** @enum {string} */
+            origin: "user" | "user_requested_generation" | "agent_draft" | "user_approved_generation";
+            subject: string;
+        };
+        AgentSignalCriterion: {
+            description: string;
+            /** @enum {string} */
+            key: "recent_funding" | "active_hiring" | "leadership_change" | "technology_usage" | "content_activity" | "purchase_intent";
+            required: boolean;
         };
         AgentToolConsistency: {
             checks: string[];
@@ -336,7 +669,15 @@ export interface components {
             source: "workspace_campaigns" | "worker_control_plane" | "campaign_diagnostics" | "pipeline" | "inbox" | "company_database" | "classification_catalog" | "campaign_workflow";
         };
         /** @enum {string} */
-        AgentToolName: "workspace.briefing" | "campaigns.list" | "campaign.inspect" | "sending.inspect" | "replies.list" | "pipeline.inspect" | "company.timeline";
+        AgentToolName: "workspace.briefing" | "campaigns.list" | "campaign.inspect" | "sending.inspect" | "replies.list" | "pipeline.inspect" | "company.timeline" | "industry.lookup" | "campaign.validate" | "audience.preview" | "list.prepare" | "campaign.prepare" | "campaign.launch.preflight" | "campaign.launch" | "campaign.pause.preflight" | "campaign.pause";
+        AgentToolPolicy: {
+            /** @enum {string} */
+            approval: "none" | "human_confirmation";
+            /** @enum {string} */
+            effect: "read" | "draft" | "write" | "external";
+            /** @constant */
+            exposure: "public_api";
+        };
         AgentToolResultBase: {
             artifacts: unknown[];
             consistency: components["schemas"]["AgentToolConsistency"];
@@ -347,11 +688,65 @@ export interface components {
             /** Format: date-time */
             generatedAt: string;
             ok: boolean;
-            policy: components["schemas"]["ReadToolPolicy"];
+            policy: components["schemas"]["AgentToolPolicy"];
             tool: components["schemas"]["AgentToolName"];
             /** @constant */
             version: 1;
         };
+        AudiencePreviewInput: {
+            sampleSize?: number;
+            state: components["schemas"]["AgentCampaignState"];
+        };
+        AudiencePreviewResult: components["schemas"]["AgentToolResultBase"] & {
+            data?: components["schemas"]["AgentHarnessResult"] | null;
+            /** @constant */
+            tool?: "audience.preview";
+        };
+        BrowserWorkerSetupRequirement: {
+            campaignChannels: components["schemas"]["TargetChannel"][];
+            /** @constant */
+            code: "browser_worker_required";
+            message: string;
+            resume: components["schemas"]["BrowserWorkerSetupResume"];
+            /** Format: uri */
+            setupUrl: string;
+            /** @enum {string} */
+            state: "not_connected" | "offline";
+            /** @constant */
+            userActionRequired: true;
+        };
+        BrowserWorkerSetupResume: {
+            input: components["schemas"]["CampaignActionPreflightInput"];
+            /** @constant */
+            tool: "campaign.launch.preflight";
+        };
+        CampaignActionApprovalRequiredOutput: {
+            /** Format: uri */
+            approvalUrl: string;
+            authorization: components["schemas"]["AgentActionAuthorization"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "approval_required";
+        };
+        CampaignActionInput: {
+            authorizationId: string;
+            campaignId: components["schemas"]["ResourceId"];
+            idempotencyKey: components["schemas"]["IdempotencyKey"];
+        };
+        CampaignActionOutput: {
+            action: components["schemas"]["AgentCampaignAction"];
+            authorizationId: string;
+            campaign: components["schemas"]["AgentActionSnapshot"];
+            idempotencyKey: components["schemas"]["IdempotencyKey"];
+            replayed: boolean;
+        };
+        CampaignActionPreflightInput: {
+            campaignId: components["schemas"]["ResourceId"];
+            idempotencyKey: components["schemas"]["IdempotencyKey"];
+        };
+        CampaignActionPreflightOutput: components["schemas"]["CampaignActionApprovalRequiredOutput"] | components["schemas"]["CampaignLaunchSetupRequiredOutput"];
         CampaignCounts: {
             Completed: number;
             Cooldown: number;
@@ -392,6 +787,40 @@ export interface components {
             /** @constant */
             tool?: "campaign.inspect";
         };
+        CampaignLaunchPreflightResult: components["schemas"]["AgentToolResultBase"] & {
+            data?: components["schemas"]["CampaignActionPreflightOutput"] | null;
+            /** @constant */
+            tool?: "campaign.launch.preflight";
+        };
+        CampaignLaunchResult: components["schemas"]["AgentToolResultBase"] & {
+            data?: components["schemas"]["CampaignActionOutput"] | null;
+            /** @constant */
+            tool?: "campaign.launch";
+        };
+        CampaignLaunchSetupRequiredOutput: {
+            setup: components["schemas"]["BrowserWorkerSetupRequirement"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "setup_required";
+        };
+        CampaignPausePreflightResult: components["schemas"]["AgentToolResultBase"] & {
+            data?: components["schemas"]["CampaignActionApprovalRequiredOutput"] | null;
+            /** @constant */
+            tool?: "campaign.pause.preflight";
+        };
+        CampaignPauseResult: components["schemas"]["AgentToolResultBase"] & {
+            data?: components["schemas"]["CampaignActionOutput"] | null;
+            /** @constant */
+            tool?: "campaign.pause";
+        };
+        CampaignPrepareInput: components["schemas"]["ListPrepareInput"];
+        CampaignPrepareResult: components["schemas"]["AgentToolResultBase"] & {
+            data?: components["schemas"]["AgentHarnessResult"] | null;
+            /** @constant */
+            tool?: "campaign.prepare";
+        };
         CampaignsListInput: {
             limit?: number;
             status?: components["schemas"]["CampaignStatus"];
@@ -420,6 +849,14 @@ export interface components {
             targetCount: number;
             /** Format: date-time */
             updatedAt: string;
+        };
+        CampaignValidateInput: {
+            state: components["schemas"]["AgentCampaignState"];
+        };
+        CampaignValidateResult: components["schemas"]["AgentToolResultBase"] & {
+            data?: components["schemas"]["AgentHarnessResult"] | null;
+            /** @constant */
+            tool?: "campaign.validate";
         };
         CompanyTimelineEvent: {
             channel?: components["schemas"]["TargetChannel"];
@@ -464,6 +901,31 @@ export interface components {
         ErrorResponse: {
             error: components["schemas"]["Error"];
         };
+        IdempotencyKey: string;
+        IndustryLookupInput: {
+            /** @enum {string} */
+            language?: "en" | "fi";
+            query: string;
+            version?: components["schemas"]["TolVersion"] | null;
+        };
+        IndustryLookupOutput: {
+            resolution: components["schemas"]["AgentIndustryResolution"];
+        };
+        IndustryLookupResult: components["schemas"]["AgentToolResultBase"] & {
+            data?: components["schemas"]["IndustryLookupOutput"] | null;
+            /** @constant */
+            tool?: "industry.lookup";
+        };
+        ListPrepareInput: {
+            idempotencyKey?: components["schemas"]["IdempotencyKey"];
+            sampleSize?: number;
+            state: components["schemas"]["AgentCampaignState"];
+        };
+        ListPrepareResult: components["schemas"]["AgentToolResultBase"] & {
+            data?: components["schemas"]["AgentHarnessResult"] | null;
+            /** @constant */
+            tool?: "list.prepare";
+        };
         OptionalCampaignInput: {
             /** @description Omit to use the selected, active, or most recent campaign. */
             campaignId?: components["schemas"]["ResourceId"];
@@ -490,14 +952,6 @@ export interface components {
         };
         /** @enum {string} */
         PipelineStage: "contacted" | "replied" | "call_booked" | "closed";
-        ReadToolPolicy: {
-            /** @constant */
-            approval: "none";
-            /** @constant */
-            effect: "read";
-            /** @constant */
-            exposure: "public_api";
-        };
         RepliesListInput: {
             campaignId?: components["schemas"]["ResourceId"];
             limit?: number;
@@ -553,7 +1007,11 @@ export interface components {
             runningJobs: number;
         };
         /** @enum {string} */
+        SupportedCountry: "FI" | "NO" | "EE" | "SE" | "DK" | "UK" | "IE" | "AE" | "AT" | "BE" | "CA" | "NL" | "NZ" | "ES" | "FR" | "HK" | "IL" | "LV" | "LT" | "IT" | "CH" | "PT" | "SA" | "SG" | "IS" | "AU" | "DE" | "US" | "ZA";
+        /** @enum {string} */
         TargetChannel: "instagram" | "facebook" | "linkedin" | "gmail";
+        /** @enum {string} */
+        TolVersion: "2008" | "2025";
         WorkspaceBriefingInput: Record<string, never>;
         WorkspaceBriefingOutput: {
             campaignCounts: components["schemas"]["CampaignCounts"];
@@ -905,6 +1363,36 @@ export interface operations {
             503: components["responses"]["AuthServiceUnavailable"];
         };
     };
+    audiencePreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AudiencePreviewInput"];
+            };
+        };
+        responses: {
+            /** @description Exact audience preview. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudiencePreviewResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
     campaignInspect: {
         parameters: {
             query?: never;
@@ -933,6 +1421,190 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    campaignLaunch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignActionInput"];
+            };
+        };
+        responses: {
+            /** @description Verified launch result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignLaunchResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    campaignLaunchPreflight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignActionPreflightInput"];
+            };
+        };
+        responses: {
+            /** @description Resumable browser setup or launch approval result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignLaunchPreflightResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    campaignPause: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignActionInput"];
+            };
+        };
+        responses: {
+            /** @description Verified pause result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignPauseResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    campaignPausePreflight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignActionPreflightInput"];
+            };
+        };
+        responses: {
+            /** @description Pause preflight and human approval URL. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignPausePreflightResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    campaignPrepare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignPrepareInput"];
+            };
+        };
+        responses: {
+            /** @description Private campaign preparation result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignPrepareResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    campaignValidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignValidateInput"];
+            };
+        };
+        responses: {
+            /** @description Campaign validation result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignValidateResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -999,6 +1671,66 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    industryLookup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IndustryLookupInput"];
+            };
+        };
+        responses: {
+            /** @description Industry resolution. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndustryLookupResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    listPrepare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListPrepareInput"];
+            };
+        };
+        responses: {
+            /** @description Private list preparation result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListPrepareResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];

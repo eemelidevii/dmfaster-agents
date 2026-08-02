@@ -2,8 +2,9 @@ import { createHash, randomBytes as nodeRandomBytes } from "node:crypto";
 import { hostname as nodeHostname } from "node:os";
 
 import {
-  DMFASTER_AGENT_SCOPES,
   DMFASTER_CREDENTIAL_EXPIRY_DAYS,
+  getDmfasterAgentScopes,
+  type DmfasterAgentAccessProfile,
 } from "./constants.ts";
 import { normalizeAgentAccessToken } from "./credential-store.ts";
 import { normalizeApiBaseUrl, validateVerificationUrl } from "./url.ts";
@@ -55,12 +56,19 @@ export type DeviceAuthAdapters = {
 export class AgentAuthError extends Error {
   readonly code: string;
   readonly status: number | null;
+  readonly retryAfterSeconds: number | null;
 
-  constructor(code: string, message: string, status: number | null = null, options?: ErrorOptions) {
+  constructor(
+    code: string,
+    message: string,
+    status: number | null = null,
+    options?: ErrorOptions & { retryAfterSeconds?: number | null },
+  ) {
     super(message, options);
     this.name = "AgentAuthError";
     this.code = code;
     this.status = status;
+    this.retryAfterSeconds = options?.retryAfterSeconds ?? null;
   }
 }
 
@@ -89,6 +97,21 @@ function boundedInteger(value: unknown, fallback: number, minimum: number, maxim
     : fallback;
 }
 
+function parseRetryAfterSeconds(value: string | null, now = Date.now()) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+  if (/^\d+$/.test(normalized)) {
+    const seconds = Number(normalized);
+    return Number.isSafeInteger(seconds) && seconds >= 0
+      ? Math.min(seconds, 24 * 60 * 60)
+      : null;
+  }
+  const retryAt = Date.parse(normalized);
+  return Number.isFinite(retryAt)
+    ? Math.min(24 * 60 * 60, Math.max(0, Math.ceil((retryAt - now) / 1_000)))
+    : null;
+}
+
 function parseErrorCode(body: unknown) {
   if (!isRecord(body)) return "request_failed";
   if (typeof body.error === "string") return body.error;
@@ -97,7 +120,8 @@ function parseErrorCode(body: unknown) {
   return "request_failed";
 }
 
-function errorForResponse(status: number, body: unknown) {
+function errorForResponse(response: Response, body: unknown, now = Date.now()) {
+  const status = response.status;
   const code = parseErrorCode(body);
   if (status === 401 || code === "unauthorized") {
     return new AgentAuthError("unauthorized", "The saved DM Faster login is no longer valid.", status);
@@ -125,8 +149,13 @@ function errorForResponse(status: number, body: unknown) {
       status,
     );
   }
-  if (status === 429) {
-    return new AgentAuthError("rate_limited", "DM Faster temporarily rate-limited authentication.", status);
+  if (status === 429 || code === "rate_limited") {
+    return new AgentAuthError(
+      "rate_limited",
+      "DM Faster temporarily rate-limited authentication.",
+      status,
+      { retryAfterSeconds: parseRetryAfterSeconds(response.headers.get("retry-after"), now) },
+    );
   }
   return new AgentAuthError("request_failed", `DM Faster authentication failed with HTTP ${status}.`, status);
 }
@@ -230,6 +259,7 @@ export async function beginDeviceAuthorization(input: {
   baseUrl: string;
   client?: string;
   deviceName?: string;
+  access?: DmfasterAgentAccessProfile;
   adapters?: DeviceAuthAdapters;
 }): Promise<PendingDeviceAuthorization> {
   const baseUrl = normalizeApiBaseUrl(input.baseUrl);
@@ -247,14 +277,14 @@ export async function beginDeviceAuthorization(input: {
         ),
         codeChallenge,
         codeChallengeMethod: "S256",
-        scopes: DMFASTER_AGENT_SCOPES,
+        scopes: getDmfasterAgentScopes(input.access),
         expiresInDays: DMFASTER_CREDENTIAL_EXPIRY_DAYS,
       }),
     },
     fetchImplementation,
   );
   const body = await readJson(response);
-  if (!response.ok) throw errorForResponse(response.status, body);
+  if (!response.ok) throw errorForResponse(response, body);
   if (!isRecord(body)) {
     throw new AgentAuthError("invalid_response", "DM Faster returned an invalid device sign-in response.");
   }
@@ -342,13 +372,16 @@ export async function pollDeviceAuthorization(input: {
       }
       continue;
     }
-    if (response.status === 429 || code === "slow_down") {
-      const retryAfter = boundedInteger(response.headers.get("retry-after") ? Number(response.headers.get("retry-after")) : null, 0, 1, 60);
-      intervalSeconds = Math.max(intervalSeconds + 5, retryAfter);
+    if (code === "slow_down") {
+      const retryAfter = parseRetryAfterSeconds(response.headers.get("retry-after"), now());
+      intervalSeconds = Math.max(intervalSeconds + 5, retryAfter ?? 0);
       continue;
     }
+    if (response.status === 429 || code === "rate_limited") {
+      throw errorForResponse(response, body, now());
+    }
     if (response.status >= 500 && response.status <= 599) continue;
-    throw errorForResponse(response.status, body);
+    throw errorForResponse(response, body, now());
   }
 
   throw new AgentAuthError("expired_token", "DM Faster sign-in timed out. Run `dmfaster auth login` again.");
@@ -370,7 +403,7 @@ export async function getRemoteAuthStatus(input: {
     input.fetch ?? globalThis.fetch,
   );
   const body = await readJson(response);
-  if (!response.ok) throw errorForResponse(response.status, body);
+  if (!response.ok) throw errorForResponse(response, body);
   if (!isRecord(body) || body.authenticated !== true) {
     throw new AgentAuthError("invalid_response", "DM Faster returned an invalid authentication status.");
   }
@@ -393,7 +426,7 @@ export async function revokeRemoteCredential(input: {
     input.fetch ?? globalThis.fetch,
   );
   const body = await readJson(response);
-  if (!response.ok) throw errorForResponse(response.status, body);
+  if (!response.ok) throw errorForResponse(response, body);
   if (!isRecord(body) || body.revoked !== true) {
     throw new AgentAuthError("invalid_response", "DM Faster returned an invalid logout response.");
   }

@@ -1,7 +1,7 @@
 {
   "name": "dmfaster",
-  "version": "0.1.1",
-  "description": "Inspect a live DM Faster workspace through seven official read-only campaign, sending, reply, pipeline, and company-history tools.",
+  "version": "1.0.0",
+  "description": "Plan campaigns, prepare private drafts, inspect live sales activity, and run human-approved campaign controls through DM Faster Agent 1.0.",
   "author": {
     "name": "DM Faster",
     "url": "https://dmfaster.com"
@@ -20,18 +20,21 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "DM Faster",
-    "shortDescription": "Inspect DM Faster with safe read-only tools",
-    "longDescription": "Connect a live DM Faster workspace to Codex, inspect campaign and sending health, review replies and pipeline activity, and keep all product actions behind DM Faster's safety boundaries.",
+    "shortDescription": "Plan and operate DM Faster campaigns safely",
+    "longDescription": "Connect a live DM Faster workspace to Codex, build grounded campaign plans, preview exact audiences, prepare private lists and campaign drafts, inspect sales activity, and launch or pause only after a separate human approval bound to the exact campaign version.",
     "developerName": "DM Faster",
     "category": "Productivity",
     "capabilities": [
-      "Read"
+      "Read",
+      "Write"
     ],
     "websiteURL": "https://dmfaster.com/docs/agents",
     "privacyPolicyURL": "https://dmfaster.com/privacy",
     "termsOfServiceURL": "https://dmfaster.com/terms",
     "defaultPrompt": [
       "Show what needs attention in my DM Faster workspace.",
+      "Plan a campaign and preview its exact audience before creating anything.",
+      "Prepare this approved campaign as a private draft.",
       "Check why my DM Faster campaign is not sending.",
       "Summarize priority replies and pipeline activity."
     ],

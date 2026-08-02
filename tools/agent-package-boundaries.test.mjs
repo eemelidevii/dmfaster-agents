@@ -39,14 +39,21 @@ test("CLI and MCP delegate network calls to the SDK", async () => {
   }
 });
 
-test("the Phase 1 adapters contain no mutation or external-action tools", async () => {
+test("Agent 1.0 adapters expose only narrow idempotent and authorized actions", async () => {
   const source = `${await combinedSource("cli")}\n${await combinedSource("mcp-server")}`;
   assert.doesNotMatch(
     source,
-    /campaign[._](?:start|launch|pause|stop)|reply[._]send|meeting[._]book|list[._](?:create|update|delete)|approved\s*:/iu,
+    /reply[._]send|meeting[._]book|list[._](?:create|update|delete)|campaign[._](?:delete|stop)|\b(?:sql|query_database|execute_generic)\b|approved\s*:/iu,
   );
   assert.match(source, /readOnlyHint:\s*true/u);
   assert.match(source, /destructiveHint:\s*false/u);
+  assert.match(source, /destructiveHint:\s*true/u);
+  assert.match(source, /campaign_launch_preflight/u);
+  assert.match(source, /campaign_launch/u);
+  assert.match(source, /campaign_pause_preflight/u);
+  assert.match(source, /campaign_pause/u);
+  assert.match(source, /idempotencyKey/u);
+  assert.match(source, /authorizationId/u);
 });
 
 test("the root workspace owns the only lockfile for agent packages", async () => {

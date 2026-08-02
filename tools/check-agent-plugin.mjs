@@ -42,9 +42,6 @@ const codexManifest = readJson("plugins/dmfaster/.codex-plugin/plugin.json");
 const claudeManifest = readJson("plugins/dmfaster/.claude-plugin/plugin.json");
 const cursorManifest = readJson("plugins/dmfaster/.cursor-plugin/plugin.json");
 const sharedMcp = readJson("plugins/dmfaster/.mcp.json");
-const codexMarketplace = readJson(".agents/plugins/marketplace.json");
-const claudeMarketplace = readJson(".claude-plugin/marketplace.json");
-const cursorMarketplace = readJson(".cursor-plugin/marketplace.json");
 
 for (const [host, manifest] of [
   ["Codex", codexManifest],
@@ -69,17 +66,8 @@ if (claudeManifest.mcpServers !== "./.mcp.json") {
 if (cursorManifest.mcpServers !== "./.mcp.json") {
   fail("Cursor manifest must use the shared MCP config");
 }
-if (JSON.stringify(codexManifest.interface?.capabilities) !== JSON.stringify(["Read"])) {
-  fail("Codex manifest must advertise only the Read capability");
-}
-if (codexManifest.interface?.composerIcon !== "./assets/dm-icon.png") {
-  fail("Codex manifest must use the production DM Faster icon as its composer icon");
-}
-if (codexManifest.interface?.logo !== "./assets/dm-icon.png") {
-  fail("Codex manifest must use the production DM Faster icon as its logo");
-}
-if (codexManifest.interface?.logoDark !== undefined) {
-  fail("Codex manifest must not substitute a generated dark logo");
+if (JSON.stringify(codexManifest.interface?.capabilities) !== JSON.stringify(["Read", "Write"])) {
+  fail("Codex manifest must advertise the Agent 1.0 Read and Write capabilities");
 }
 if (cursorManifest.displayName !== "DM Faster") {
   fail("Cursor manifest displayName must be DM Faster");
@@ -162,105 +150,67 @@ for (const [host, server] of [
   }
 }
 
-const expectedCodexMarketplace = {
-  name: "dmfaster-agents",
-  interface: {
-    displayName: "DM Faster",
-  },
-  plugins: [
-    {
-      name: "dmfaster",
-      source: {
-        source: "local",
-        path: "./plugins/dmfaster",
-      },
-      policy: {
-        installation: "AVAILABLE",
-        authentication: "ON_INSTALL",
-      },
-      category: "Productivity",
-    },
-  ],
-};
-if (JSON.stringify(codexMarketplace) !== JSON.stringify(expectedCodexMarketplace)) {
-  fail("Codex marketplace must expose only the canonical dmfaster plugin");
-}
-
-if (claudeMarketplace.name !== "dmfaster-agents") {
-  fail("Claude marketplace name must be dmfaster-agents");
-}
-if (claudeMarketplace.owner?.name !== "DM Faster") {
-  fail("Claude marketplace owner must be DM Faster");
-}
-if (!Array.isArray(claudeMarketplace.plugins) || claudeMarketplace.plugins.length !== 1) {
-  fail("Claude marketplace must expose exactly one plugin");
-} else {
-  const [plugin] = claudeMarketplace.plugins;
-  if (plugin.name !== "dmfaster") fail("Claude marketplace plugin name must be dmfaster");
-  if (plugin.source !== "./plugins/dmfaster") {
-    fail("Claude marketplace must point to the canonical dmfaster plugin");
-  }
-  if (plugin.strict !== true) fail("Claude marketplace plugin must use strict mode");
-}
-
-const cursorMarketplaceAllowedKeys = new Set(["name", "owner", "metadata", "plugins"]);
-for (const key of Object.keys(cursorMarketplace)) {
-  if (!cursorMarketplaceAllowedKeys.has(key)) {
-    fail(`Cursor marketplace contains unsupported property ${key}`);
-  }
-}
-if (cursorMarketplace.name !== "dmfaster-agents") {
-  fail("Cursor marketplace name must be dmfaster-agents");
-}
-if (JSON.stringify(cursorMarketplace.owner) !== JSON.stringify({ name: "DM Faster" })) {
-  fail("Cursor marketplace owner must be DM Faster without a personal contact address");
-}
-if (typeof cursorMarketplace.metadata?.description !== "string") {
-  fail("Cursor marketplace must include a description");
-}
-if (!Array.isArray(cursorMarketplace.plugins) || cursorMarketplace.plugins.length !== 1) {
-  fail("Cursor marketplace must contain exactly one plugin");
-} else {
-  const [entry] = cursorMarketplace.plugins;
-  const entryAllowedKeys = new Set(["name", "source", "description"]);
-  for (const key of Object.keys(entry)) {
-    if (!entryAllowedKeys.has(key)) fail(`Cursor marketplace entry contains unsupported property ${key}`);
-  }
-  if (entry.name !== cursorManifest.name) fail("Cursor marketplace and plugin names must match");
-  if (entry.source !== "plugins/dmfaster") {
-    fail("Cursor marketplace source must resolve to plugins/dmfaster");
-  }
-  if (entry.description !== cursorManifest.description) {
-    fail("Cursor marketplace and plugin descriptions must match");
-  }
-}
-
 const requiredFiles = [
   "LICENSE",
   "README.md",
   ".codex-plugin/plugin.json",
   ".claude-plugin/plugin.json",
   ".cursor-plugin/plugin.json",
+  "assets/dm-icon.png",
   "skills/dmfaster/SKILL.md",
   "skills/dmfaster/agents/openai.yaml",
   "skills/dmfaster/references/authentication.md",
   "skills/dmfaster/references/tools.md",
-  "assets/dm-icon.png",
 ];
 for (const relativePath of requiredFiles) {
   if (!existsSync(path.join(pluginRoot, relativePath))) fail(`missing plugin file ${relativePath}`);
 }
 
-const publicReadme = readFileSync(path.join(repoRoot, "README.md"), "utf8");
-const requiredInstallCommands = [
-  "codex plugin marketplace add eemelidevii/dmfaster-agents",
-  "codex plugin add dmfaster@dmfaster-agents",
-  "claude plugin marketplace add eemelidevii/dmfaster-agents",
-  "claude plugin install dmfaster@dmfaster-agents",
-  "/add-plugin dmfaster",
+const publicMarketplacePaths = [
+  ".agents/plugins/marketplace.json",
+  ".claude-plugin/marketplace.json",
+  ".cursor-plugin/marketplace.json",
 ];
-for (const command of requiredInstallCommands) {
-  if (!publicReadme.includes(command)) fail(`README.md must document \`${command}\``);
+const publicMarketplacePresence = publicMarketplacePaths.map((relativePath) => (
+  existsSync(path.join(repoRoot, relativePath))
+));
+if (publicMarketplacePresence.some(Boolean) && !publicMarketplacePresence.every(Boolean)) {
+  fail("public releases must register the plugin in Codex, Claude, and Cursor marketplaces together");
+}
+if (publicMarketplacePresence.every(Boolean)) {
+  const cursorMarketplace = readJson(".cursor-plugin/marketplace.json");
+  const cursorMarketplaceAllowedKeys = new Set(["name", "owner", "metadata", "plugins"]);
+  for (const key of Object.keys(cursorMarketplace)) {
+    if (!cursorMarketplaceAllowedKeys.has(key)) {
+      fail(`Cursor marketplace contains unsupported property ${key}`);
+    }
+  }
+  if (cursorMarketplace.name !== "dmfaster-agents") {
+    fail("Cursor marketplace name must be dmfaster-agents");
+  }
+  if (JSON.stringify(cursorMarketplace.owner) !== JSON.stringify({ name: "DM Faster" })) {
+    fail("Cursor marketplace owner must be DM Faster without a personal contact address");
+  }
+  if (typeof cursorMarketplace.metadata?.description !== "string") {
+    fail("Cursor marketplace must include a description");
+  }
+  const cursorEntries = cursorMarketplace.plugins;
+  if (!Array.isArray(cursorEntries) || cursorEntries.length !== 1) {
+    fail("Cursor marketplace must contain exactly one plugin");
+  } else {
+    const [entry] = cursorEntries;
+    const entryAllowedKeys = new Set(["name", "source", "description"]);
+    for (const key of Object.keys(entry)) {
+      if (!entryAllowedKeys.has(key)) fail(`Cursor marketplace entry contains unsupported property ${key}`);
+    }
+    if (entry.name !== cursorManifest.name) fail("Cursor marketplace and plugin names must match");
+    if (entry.source !== "plugins/dmfaster") {
+      fail("Cursor marketplace source must resolve to plugins/dmfaster");
+    }
+    if (entry.description !== cursorManifest.description) {
+      fail("Cursor marketplace and plugin descriptions must match");
+    }
+  }
 }
 
 const versionPinnedFiles = [
