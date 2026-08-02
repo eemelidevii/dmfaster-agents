@@ -123,12 +123,11 @@ function assertReleaseContext(version) {
       `Agent packages may only publish from eemelidevii/dmfaster-agents; received ${process.env.GITHUB_REPOSITORY || "(missing)"}.`,
     );
   }
-  const releaseWorkflow = process.env.DMFASTER_AGENT_RELEASE_WORKFLOW === "agent-packages-release.yml";
-  const bootstrapWorkflow = (
-    process.env.DMFASTER_AGENT_BOOTSTRAP_WORKFLOW === "agent-packages-bootstrap.yml"
-  );
-  if (releaseWorkflow === bootstrapWorkflow) {
-    throw new Error("Exactly one guarded agent package workflow marker is required.");
+  if (
+    process.env.DMFASTER_AGENT_RELEASE_WORKFLOW !== "agent-packages-release.yml"
+    || process.env.DMFASTER_AGENT_BOOTSTRAP_WORKFLOW
+  ) {
+    throw new Error("The guarded trusted-publishing workflow marker is required without a bootstrap fallback.");
   }
   if (!/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(version)) {
     throw new Error(`Agent package releases require a stable semantic version; received ${version || "(empty)"}.`);
@@ -141,15 +140,14 @@ function assertReleaseContext(version) {
   if (!process.env.GITHUB_SHA || head !== process.env.GITHUB_SHA) {
     throw new Error(`Release checkout ${head} does not match GITHUB_SHA ${process.env.GITHUB_SHA || "(missing)"}.`);
   }
-  return bootstrapWorkflow ? "bootstrap" : "release";
 }
 
-function assertBootstrapExists(definition) {
+function assertPublishedPackageExists(definition) {
   const result = runNpm(["view", definition.name, "name", "--json"]);
   if (result.status !== 0) {
     if (/\bE404\b|404 Not Found/u.test(`${result.stdout}\n${result.stderr}`)) {
       throw new Error(
-        `${definition.name} has not completed its separately approved first-publish bootstrap; refusing OIDC release.`,
+        `${definition.name} does not exist on npm; refusing to restore a token-based bootstrap path.`,
       );
     }
     requireResult(result, `npm view ${definition.name}`);
@@ -157,23 +155,6 @@ function assertBootstrapExists(definition) {
   const publishedName = parseJsonOutput(result, `npm view ${definition.name}`);
   if (publishedName !== definition.name) {
     throw new Error(`npm returned an unexpected package identity for ${definition.name}.`);
-  }
-}
-
-function assertBootstrapCandidate(definition, version) {
-  const result = runNpm(["view", definition.name, "name", "--json"]);
-  if (result.status !== 0) {
-    if (/\bE404\b|404 Not Found/u.test(`${result.stdout}\n${result.stderr}`)) return;
-    requireResult(result, `npm view ${definition.name}`);
-  }
-  const publishedName = parseJsonOutput(result, `npm view ${definition.name}`);
-  if (publishedName !== definition.name) {
-    throw new Error(`npm returned an unexpected package identity for ${definition.name}.`);
-  }
-  if (getPublishedArtifact(definition, version) === null) {
-    throw new Error(
-      `${definition.name} already exists but ${version} does not; refusing a first-publish bootstrap over an existing package.`,
-    );
   }
 }
 
@@ -218,11 +199,8 @@ function assertCurrentMain() {
 
 function main() {
   const version = process.env.RELEASE_VERSION || "";
-  const releaseMode = assertReleaseContext(version);
-  for (const definition of agentPackageDefinitions) {
-    if (releaseMode === "bootstrap") assertBootstrapCandidate(definition, version);
-    else assertBootstrapExists(definition);
-  }
+  assertReleaseContext(version);
+  for (const definition of agentPackageDefinitions) assertPublishedPackageExists(definition);
 
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), "dmfaster-agent-release-"));
   try {
