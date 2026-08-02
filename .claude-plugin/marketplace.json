@@ -4,13 +4,13 @@
     "name": "DM Faster",
     "url": "https://dmfaster.com"
   },
-  "description": "Official read-only DM Faster tools and workflows for agents.",
+  "description": "Official DM Faster Agent 1.0 campaign planning and human-approved operations for agents.",
   "plugins": [
     {
       "name": "dmfaster",
       "displayName": "DM Faster",
       "source": "./plugins/dmfaster",
-      "description": "Inspect a live DM Faster workspace through seven official read-only campaign, sending, reply, pipeline, and company-history tools.",
+      "description": "Plan campaigns, prepare private drafts, inspect live sales activity, and run human-approved campaign controls through DM Faster Agent 1.0.",
       "category": "Productivity",
       "tags": [
         "sales",

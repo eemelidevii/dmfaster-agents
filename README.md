@@ -1,22 +1,30 @@
 # DM Faster for agents
 
-This repository contains the public, read-only agent interface for
-[DM Faster](https://dmfaster.com):
+This repository is the public source for
+[DM Faster](https://dmfaster.com) Agent 1.0:
 
 - the versioned Agent API contract;
 - secure browser authorization backed by the operating-system credential store;
-- the typed JavaScript SDK;
-- the `dmfaster` command-line client;
-- the `dmfaster-mcp` stdio MCP server;
+- the typed JavaScript SDK and `dmfaster` CLI;
+- the stateless MCP 2026-07-28 stdio server;
+- a portable MCP Apps campaign workspace built from DM Faster's product UI;
 - the shared Codex, Claude, and Cursor plugin and skill.
 
-It intentionally contains no DM Faster application server, database, browser
-extension, sending runtime, private product source, or write-capable tools.
+Agent 1.0 exposes 16 bounded domain tools. It can inspect a live workspace,
+resolve industries, validate complete campaign plans, preview exact audiences,
+prepare private lists and disabled campaign drafts idempotently, and launch or
+pause only after the owner approves the exact campaign version in DM Faster.
+It cannot send replies, book meetings, expose provider credentials, or bypass
+the browser extension's execution boundary.
+
+This repository intentionally contains no DM Faster application server,
+database, browser extension, sending runtime, or private product source.
 
 ## Install the plugin
 
-Node.js 24 is required. Add the public GitHub marketplace, install DM Faster,
-and start a new session so the skill and MCP tools load.
+Node.js 24 and macOS Keychain or Linux Secret Service are required. Windows is
+not supported in this release. Add the public GitHub marketplace, install DM
+Faster, and start a new session so the skill and MCP server load.
 
 ### Codex
 
@@ -41,40 +49,46 @@ Marketplace review is approved, install it from Cursor Agent with:
 /add-plugin dmfaster
 ```
 
-Merging the manifest does not by itself publish the universal Cursor listing.
+Merging the manifest does not publish the universal Cursor listing.
 
-Authenticate with your normal DM Faster account:
+## Authenticate
 
 ```bash
-npx --yes @dmfaster/cli@0.1.1 auth login --json
+npx --yes @dmfaster/cli@1.0.0 auth login --json
 ```
 
-The focused browser page shows the exact workspace, expiry, scopes, and a
+The focused DM Faster page shows the exact workspace, expiry, scopes, and a
 confirmation code that must match the CLI. Credentials are stored in macOS
-Keychain or Linux Secret Service and are never written to a plaintext
-configuration file.
+Keychain or Linux Secret Service and are never written to plaintext config.
+Use `--access read`, `plan`, or `draft` to grant a smaller capability ceiling;
+the default `full` profile enables the complete Agent 1.0 flow.
+
+Login permission alone never authorizes launch or pause. Those tools first
+return a separate approval page and confirmation code. The owner must approve
+the exact campaign version in DM Faster before the server issues a short-lived,
+single-use action authorization.
 
 ## Use the CLI or MCP server directly
 
-The same public packages can be used without the plugin:
-
 ```bash
-npx --yes @dmfaster/cli@0.1.1 workspace briefing --json
-npx --yes @dmfaster/mcp-server@0.1.1
+npx --yes @dmfaster/cli@1.0.0 workspace briefing --json
+npx --yes @dmfaster/mcp-server@1.0.0
 ```
 
-The MCP server exposes exactly seven read-only tools:
+The 16 MCP domain tools cover workspace, campaign, sending, reply, pipeline,
+company-history, industry, validation, exact-audience preview, private draft,
+launch, and pause workflows. Compliant MCP Apps hosts can also render the
+read-only `campaign_workspace` presentation tool inline. Headless hosts receive
+the same complete state and keep every domain capability.
 
-- `workspace_briefing`
-- `campaigns_list`
-- `campaign_inspect`
-- `sending_inspect`
-- `replies_list`
-- `pipeline_inspect`
-- `company_timeline`
+The MCP server is deliberately stateless: send the complete latest campaign
+state on each planning call. Durable product state, permissions, idempotency,
+and action approvals remain on DM Faster's server. Clients that have not
+implemented MCP 2026-07-28 must use the version-pinned CLI; Agent 1.0 does not
+silently downgrade to the 2025 protocol.
 
 See [dmfaster.com/docs/agents](https://dmfaster.com/docs/agents) for host setup
-instructions.
+and the complete tool workflow.
 
 ## Develop
 
@@ -89,10 +103,10 @@ truth. Regenerate SDK types with `npm run generate:agent-api`.
 
 ## Security boundary
 
-The public clients reject plaintext non-loopback API origins, refuse
-redirect-following, keep credentials out of URLs and process arguments, and do
-not implement campaign mutations, message sending, scheduling, or other
-external actions.
+The public clients reject plaintext non-loopback API origins, refuse redirects,
+keep credentials out of URLs and process arguments, require exact audience
+counts, make draft mutations idempotent, and do not accept conversational
+approval in place of server-issued action authorization.
 
 Report vulnerabilities through GitHub private vulnerability reporting. Do not
 open a public issue containing credentials, customer information, or an

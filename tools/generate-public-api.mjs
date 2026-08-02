@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const EXPECTED_OPENAPI_TYPESCRIPT_VERSION = "7.13.0";
+const GENERATE_COMMAND = "npm run generate:agent-api";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const contractPath = path.join(rootDir, "packages", "public-api", "openapi.yaml");
 const outputPath = path.join(rootDir, "packages", "sdk", "src", "generated", "api.ts");
@@ -64,7 +65,7 @@ try {
   if (check) {
     const existing = await readFile(outputPath, "utf8").catch(() => "");
     if (existing !== generated) {
-      process.stderr.write("Generated public API types are stale. Run npm run generate:public-api.\n");
+      process.stderr.write(`Generated public API types are stale. Run ${GENERATE_COMMAND}.\n`);
       process.exitCode = 1;
     } else {
       process.stdout.write("Generated public API types are up to date.\n");

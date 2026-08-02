@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import test from "node:test";
 
-import type {
-  AgentToolInputMap,
-  AgentToolName,
-  AgentToolResult,
+import {
+  AGENT_TOOL_POLICIES,
+  type AgentToolInputMap,
+  type AgentToolName,
+  type AgentToolResult,
 } from "@dmfaster/sdk";
+import { DmfasterHttpError } from "@dmfaster/sdk";
 
 import { runCli, type CliContext } from "../src/cli.ts";
 
@@ -55,7 +57,7 @@ function configuredContext(calls: Array<{ tool: AgentToolName; input: unknown }>
         return {
           version: 1,
           tool,
-          policy: { effect: "read", approval: "none", exposure: "public_api" },
+          policy: AGENT_TOOL_POLICIES[tool],
           ok: true,
           generatedAt: "2026-07-29T12:00:00.000Z",
           durationMs: 1,
@@ -75,6 +77,8 @@ test("prints useful help without requiring configuration", async () => {
   const exitCode = await runCli(["--help"], { stdout: stdout.stream });
   assert.equal(exitCode, 0);
   assert.match(stdout.read(), /workspace briefing/);
+  assert.match(stdout.read(), /Agent quick start/);
+  assert.match(stdout.read(), /setup\.resume/);
   assert.match(stdout.read(), /DMFASTER_TOKEN/);
 });
 
@@ -108,7 +112,7 @@ test("gives an actionable error when an API command has no token", async () => {
   assert.match(stderr.read(), /dmfaster auth login/);
 });
 
-test("maps read-only CLI arguments to the public tool contract", async () => {
+test("maps workspace-read CLI arguments to the public tool contract", async () => {
   const calls: Array<{ tool: AgentToolName; input: unknown }> = [];
   const stdout = output();
   const exitCode = await runCli(
@@ -121,6 +125,52 @@ test("maps read-only CLI arguments to the public tool contract", async () => {
     input: { campaignId: "campaign_123", limit: 7, query: "Visio" },
   }]);
   assert.match(stdout.read(), /"tool": "replies.list"/);
+});
+
+test("loads stateless campaign input from a bounded JSON file", async () => {
+  const calls: Array<{ tool: AgentToolName; input: unknown }> = [];
+  const state = { profile: { version: 1 }, brief: { version: 1 } };
+  const exitCode = await runCli(
+    ["campaign", "prepare", "--state", "/tmp/plan.json", "--idempotency-key", "campaign:prepare:1"],
+    {
+      ...configuredContext(calls),
+      readTextFile: async (path) => {
+        assert.equal(path, "/tmp/plan.json");
+        return JSON.stringify({ state });
+      },
+    },
+  );
+  assert.equal(exitCode, 0);
+  assert.deepEqual(calls, [{
+    tool: "campaign.prepare",
+    input: { state, idempotencyKey: "campaign:prepare:1" },
+  }]);
+});
+
+test("requires matching preflight fields for campaign actions", async () => {
+  const calls: Array<{ tool: AgentToolName; input: unknown }> = [];
+  const authorizationId = `agent_action_${"a".repeat(32)}`;
+  const exitCode = await runCli(
+    [
+      "campaign",
+      "launch",
+      "campaign_123",
+      "--idempotency-key",
+      "launch:campaign_123:1",
+      "--authorization-id",
+      authorizationId,
+    ],
+    configuredContext(calls),
+  );
+  assert.equal(exitCode, 0);
+  assert.deepEqual(calls, [{
+    tool: "campaign.launch",
+    input: {
+      campaignId: "campaign_123",
+      idempotencyKey: "launch:campaign_123:1",
+      authorizationId,
+    },
+  }]);
 });
 
 test("maps company timeline identifiers to the public tool contract", async () => {
@@ -136,4 +186,50 @@ test("maps company timeline identifiers to the public tool contract", async () =
     input: { campaignId: "campaign_123", companyOutreachId: "outreach_456" },
   }]);
   assert.match(stdout.read(), /"tool": "company.timeline"/);
+});
+
+test("rejects an explicitly empty optional campaign identifier", async () => {
+  const calls: Array<{ tool: AgentToolName; input: unknown }> = [];
+  const stderr = output();
+  const exitCode = await runCli(
+    ["campaign", "inspect", "   "],
+    { ...configuredContext(calls), stderr: stderr.stream },
+  );
+
+  assert.equal(exitCode, 2);
+  assert.deepEqual(calls, []);
+  assert.match(stderr.read(), /Campaign identifiers cannot be empty/);
+});
+
+test("prints typed retry metadata from SDK transport failures", async () => {
+  const stderr = output();
+  const exitCode = await runCli(["--json", "workspace", "briefing"], {
+    ...configuredContext([]),
+    stderr: stderr.stream,
+    createClient: () => ({
+      async invoke() {
+        throw new DmfasterHttpError({
+          message: "Too many agent tool requests.",
+          status: 429,
+          responseBody: null,
+          code: "rate_limited",
+          retryable: true,
+          requestId: "req_cli_123",
+          retryAfterSeconds: 90,
+        });
+      },
+    }),
+  });
+
+  assert.equal(exitCode, 1);
+  assert.deepEqual(JSON.parse(stderr.read()), {
+    error: {
+      code: "rate_limited",
+      message: "Too many agent tool requests.",
+      retryable: true,
+      requestId: "req_cli_123",
+      retryAfterSeconds: 90,
+      status: 429,
+    },
+  });
 });

@@ -12,10 +12,12 @@ information, or an unpatched exploit in a public issue.
 ## Supported release
 
 Only the latest published stable version of the `@dmfaster` agent packages is
-supported. The current release line is `0.1.x`.
+supported. The current release line is `1.0.x`.
 
 ## Scope
 
-This repository contains local read-only clients. Production service incidents
-or account-access problems should be reported through DM Faster support rather
-than a public source issue.
+This repository contains bounded local clients. Agent 1.0 supports planning
+reads, idempotent private-draft preparation, and separately owner-approved
+launch or pause controls. Production service incidents or account-access
+problems should be reported through DM Faster support rather than a public
+source issue.

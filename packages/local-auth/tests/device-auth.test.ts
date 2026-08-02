@@ -6,6 +6,9 @@ import {
   AgentAuthError,
   beginDeviceAuthorization,
   createPkcePair,
+  DMFASTER_AGENT_ACCESS_PROFILES,
+  DMFASTER_AGENT_SCOPES,
+  getDmfasterAgentScopes,
   getRemoteAuthStatus,
   pollDeviceAuthorization,
   revokeRemoteCredential,
@@ -44,7 +47,16 @@ function identity(accessToken = generatedToken()) {
       id: `agent_cred_${randomBytes(8).toString("hex")}`,
       name: "DM Faster CLI",
       client: "DM Faster CLI",
-      scopes: ["workspace:read", "campaigns:read", "sending:read", "inbox:read", "pipeline:read"],
+      scopes: [
+        "workspace:read",
+        "campaigns:read",
+        "sending:read",
+        "inbox:read",
+        "pipeline:read",
+        "audiences:read",
+        "campaigns:write",
+        "campaigns:launch",
+      ],
       expiresAt: "2026-08-28T12:00:00.000Z",
     },
     workspace: { id: `workspace_${randomBytes(8).toString("hex")}`, name: "Workspace" },
@@ -62,6 +74,21 @@ test("creates an S256 PKCE pair from exactly 32 random bytes", () => {
   assert.equal(
     pair.codeChallenge,
     createHash("sha256").update(pair.codeVerifier, "ascii").digest("base64url"),
+  );
+});
+
+test("defines immutable least-privilege access profiles and returns defensive scope copies", () => {
+  assert.deepEqual(DMFASTER_AGENT_ACCESS_PROFILES.read, DMFASTER_AGENT_SCOPES.slice(0, 5));
+  assert.deepEqual(DMFASTER_AGENT_ACCESS_PROFILES.plan, DMFASTER_AGENT_SCOPES.slice(0, 6));
+  assert.deepEqual(DMFASTER_AGENT_ACCESS_PROFILES.draft, DMFASTER_AGENT_SCOPES.slice(0, 7));
+  assert.deepEqual(DMFASTER_AGENT_ACCESS_PROFILES.full, DMFASTER_AGENT_SCOPES);
+
+  const scopes = getDmfasterAgentScopes("plan");
+  scopes.push("campaigns:launch");
+  assert.deepEqual(getDmfasterAgentScopes("plan"), DMFASTER_AGENT_SCOPES.slice(0, 6));
+  assert.throws(
+    () => getDmfasterAgentScopes("administrator" as never),
+    /Unknown DM Faster agent access profile/,
   );
 });
 
@@ -87,11 +114,87 @@ test("starts device auth with a public challenge and a secret-free verification 
   assert.equal(String(requestBody?.deviceName).length, 100);
   assert.doesNotMatch(String(requestBody?.deviceName), /[\r\n\t]/);
   assert.equal(requestBody?.expiresInDays, 30);
-  assert.ok(Array.isArray(requestBody?.scopes));
+  assert.deepEqual(requestBody?.scopes, [...DMFASTER_AGENT_SCOPES]);
   assert.equal("codeVerifier" in (requestBody ?? {}), false);
   assert.equal("deviceCode" in (requestBody ?? {}), false);
   assert.equal(new URL(authorization.verificationUrl).search, "");
   assert.equal(authorization.confirmationCode, server.confirmationCode);
+});
+
+test("starts plan-only device auth without draft or launch scopes", async () => {
+  const server = generatedDeviceResponse();
+  let requestedScopes: unknown = null;
+  await beginDeviceAuthorization({
+    baseUrl: BASE_URL,
+    access: "plan",
+    adapters: {
+      fetch: async (_url, init) => {
+        requestedScopes = (JSON.parse(String(init?.body)) as Record<string, unknown>).scopes;
+        return Response.json(server, { status: 201 });
+      },
+    },
+  });
+
+  assert.deepEqual(requestedScopes, DMFASTER_AGENT_SCOPES.slice(0, 6));
+  assert.ok(!(requestedScopes as string[]).includes("campaigns:write"));
+  assert.ok(!(requestedScopes as string[]).includes("campaigns:launch"));
+});
+
+test("device start, auth status, and revoke preserve Retry-After metadata", async () => {
+  const token = generatedToken();
+  const cases = [
+    {
+      name: "device start",
+      retryAfterSeconds: 31,
+      run: () => beginDeviceAuthorization({
+        baseUrl: BASE_URL,
+        adapters: {
+          fetch: async () => Response.json(
+            { error: { code: "rate_limited" } },
+            { status: 429, headers: { "retry-after": "31" } },
+          ),
+        },
+      }),
+    },
+    {
+      name: "auth status",
+      retryAfterSeconds: 67,
+      run: () => getRemoteAuthStatus({
+        baseUrl: BASE_URL,
+        token,
+        fetch: async () => Response.json(
+          { error: { code: "rate_limited" } },
+          { status: 429, headers: { "retry-after": "67" } },
+        ),
+      }),
+    },
+    {
+      name: "credential revoke",
+      retryAfterSeconds: 103,
+      run: () => revokeRemoteCredential({
+        baseUrl: BASE_URL,
+        token,
+        fetch: async () => Response.json(
+          { error: { code: "rate_limited" } },
+          { status: 429, headers: { "retry-after": "103" } },
+        ),
+      }),
+    },
+  ];
+
+  for (const scenario of cases) {
+    await assert.rejects(
+      scenario.run(),
+      (error: unknown) => {
+        assert.ok(error instanceof AgentAuthError);
+        assert.equal(error.code, "rate_limited");
+        assert.equal(error.status, 429);
+        assert.equal(error.retryAfterSeconds, scenario.retryAfterSeconds);
+        return true;
+      },
+      scenario.name,
+    );
+  }
 });
 
 test("uses an actionable fallback for an unusable hostname", () => {
@@ -155,6 +258,37 @@ test("polls at the server interval, respects slow-down, and returns a validated 
   assert.deepEqual(sleeps, [5_000, 5_000, 10_000]);
   assert.equal(result.accessToken, resultBody.accessToken);
   assert.equal(result.workspace.id, resultBody.workspace.id);
+});
+
+test("surfaces a transport rate limit instead of treating it as OAuth slow-down", async () => {
+  const server = generatedDeviceResponse();
+  let now = 0;
+  let pollCount = 0;
+  const fetch = async (url: string | URL | Request) => {
+    if (String(url).endsWith("/device")) return Response.json(server, { status: 201 });
+    pollCount += 1;
+    return Response.json(
+      { error: { code: "rate_limited", message: "Authentication rate limit exceeded." } },
+      { status: 429, headers: { "retry-after": "900" } },
+    );
+  };
+  const authorization = await beginDeviceAuthorization({ baseUrl: BASE_URL, adapters: { fetch } });
+
+  await assert.rejects(
+    pollDeviceAuthorization({
+      baseUrl: BASE_URL,
+      authorization,
+      adapters: {
+        fetch,
+        now: () => now,
+        sleep: async (milliseconds) => { now += milliseconds; },
+      },
+    }),
+    (error: unknown) => error instanceof AgentAuthError
+      && error.code === "rate_limited"
+      && error.retryAfterSeconds === 900,
+  );
+  assert.equal(pollCount, 1, "a transport rate limit must stop the device polling loop");
 });
 
 test("reports browser denial and timeout without including in-memory secrets", async () => {

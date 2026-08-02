@@ -7,6 +7,7 @@ import {
   rename,
   rm,
   stat,
+  unlink,
   writeFile,
 } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -20,13 +21,17 @@ const CLEANUP_GRACE_MS = 60 * 1_000;
 export const LOGIN_LOCK_STALE_AFTER_MS = AUTHORIZATION_WINDOW_MS + CLEANUP_GRACE_MS;
 
 const METADATA_FILE = "owner.json";
+const LEASE_FILE_PREFIX = "lease-";
+const OWNER_ID_PATTERN = /^[a-zA-Z0-9_-]{8,160}$/;
+const LEASE_ID_PATTERN = /^[a-f0-9]{32}$/;
 
 type LoginLockMetadata = {
-  version: 1;
+  version: 1 | 2;
   ownerId: string;
   pid: number;
   createdAt: number;
   expiresAt: number;
+  leaseId?: string;
 };
 
 export interface LoginLock {
@@ -108,14 +113,16 @@ function parseMetadata(value: string): LoginLockMetadata | null {
   try {
     const parsed = JSON.parse(value) as Partial<LoginLockMetadata>;
     if (
-      parsed.version !== 1
+      (parsed.version !== 1 && parsed.version !== 2)
       || typeof parsed.ownerId !== "string"
-      || !/^[a-zA-Z0-9_-]{8,160}$/.test(parsed.ownerId)
+      || !OWNER_ID_PATTERN.test(parsed.ownerId)
       || !Number.isInteger(parsed.pid)
       || Number(parsed.pid) < 1
       || !Number.isFinite(parsed.createdAt)
       || !Number.isFinite(parsed.expiresAt)
       || Number(parsed.expiresAt) <= Number(parsed.createdAt)
+      || (parsed.version === 2
+        && (typeof parsed.leaseId !== "string" || !LEASE_ID_PATTERN.test(parsed.leaseId)))
     ) return null;
     return parsed as LoginLockMetadata;
   } catch {
@@ -123,7 +130,34 @@ function parseMetadata(value: string): LoginLockMetadata | null {
   }
 }
 
+function leasePath(input: { root: string; lockName: string; leaseId: string }) {
+  return join(input.root, `${input.lockName}.${LEASE_FILE_PREFIX}${input.leaseId}`);
+}
+
+async function removeLeaseFile(path: string) {
+  try {
+    // `unlink` is an atomic operation on this owner-specific path and never
+    // follows a symlink. A random lease ID prevents a replacement owner from
+    // legitimately reusing the name.
+    await unlink(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw error;
+  }
+}
+
+async function hasLeaseFile(path: string) {
+  try {
+    return (await lstat(path)).isFile();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
 async function readExistingLock(input: {
+  root: string;
+  lockName: string;
   lockPath: string;
   now: number;
 }): Promise<{ stale: boolean; retryAfterMs: number }> {
@@ -132,6 +166,15 @@ async function readExistingLock(input: {
     metadata = parseMetadata(await readFile(join(input.lockPath, METADATA_FILE), "utf8"));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+
+  if (metadata?.version === 2 && metadata.leaseId) {
+    const active = await hasLeaseFile(leasePath({
+      root: input.root,
+      lockName: input.lockName,
+      leaseId: metadata.leaseId,
+    }));
+    if (!active) return { stale: true, retryAfterMs: 0 };
   }
 
   if (metadata) {
@@ -163,6 +206,20 @@ async function moveStaleLock(input: {
     if (code === "ENOENT" || code === "EEXIST") return false;
     throw error;
   }
+
+  let metadata: LoginLockMetadata | null = null;
+  try {
+    metadata = parseMetadata(await readFile(join(quarantine, METADATA_FILE), "utf8"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  if (metadata?.version === 2 && metadata.leaseId) {
+    await removeLeaseFile(leasePath({
+      root: input.root,
+      lockName: input.lockName,
+      leaseId: metadata.leaseId,
+    }));
+  }
   await rm(quarantine, { recursive: true, force: true });
   return true;
 }
@@ -176,6 +233,8 @@ export async function acquireLoginLock(input: {
   now?: () => number;
   pid?: number;
   ownerId?: string;
+  /** Internal synchronization seam used by deterministic lock-race tests. */
+  onReleaseValidated?: () => void | Promise<void>;
 }): Promise<LoginLock> {
   const platform = input.platform ?? process.platform;
   if (platform !== "darwin" && platform !== "linux") {
@@ -188,7 +247,7 @@ export async function acquireLoginLock(input: {
   const createdAt = now();
   const pid = input.pid ?? process.pid;
   const ownerId = input.ownerId ?? `${pid}-${createdAt}-${randomBytes(8).toString("hex")}`;
-  if (!/^[a-zA-Z0-9_-]{8,160}$/.test(ownerId) || !Number.isInteger(pid) || pid < 1) {
+  if (!OWNER_ID_PATTERN.test(ownerId) || !Number.isInteger(pid) || pid < 1) {
     throw new LoginLockUnavailableError("DM Faster could not create valid browser-login lock ownership metadata.");
   }
 
@@ -205,25 +264,38 @@ export async function acquireLoginLock(input: {
   }
   await ensurePrivateRoot(root);
   const lockPath = join(root, lockName);
+  const leaseId = randomBytes(16).toString("hex");
+  const ownerLeasePath = leasePath({ root, lockName, leaseId });
   const metadata: LoginLockMetadata = {
-    version: 1,
+    version: 2,
     ownerId,
     pid,
     createdAt,
     expiresAt: createdAt + LOGIN_LOCK_STALE_AFTER_MS,
+    leaseId,
   };
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
       await mkdir(lockPath, { mode: 0o700 });
       try {
+        await writeFile(ownerLeasePath, "", {
+          encoding: "utf8",
+          mode: 0o600,
+          flag: "wx",
+        });
         await writeFile(join(lockPath, METADATA_FILE), JSON.stringify(metadata), {
           encoding: "utf8",
           mode: 0o600,
           flag: "wx",
         });
       } catch (cause) {
-        await rm(lockPath, { recursive: true, force: true });
+        try {
+          await removeLeaseFile(ownerLeasePath);
+        } catch {
+          // Preserve the initialization error; stale recovery can quarantine
+          // an incomplete lock on a later attempt.
+        }
         throw new LoginLockUnavailableError(
           "DM Faster could not initialize the browser-login lock.",
           { cause },
@@ -243,25 +315,37 @@ export async function acquireLoginLock(input: {
             { cause: error },
           );
         }
-        if (current?.ownerId !== ownerId) throw new LoginLockLostError();
+        if (current?.ownerId !== ownerId || current.leaseId !== leaseId) {
+          throw new LoginLockLostError();
+        }
+        try {
+          if (!(await hasLeaseFile(ownerLeasePath))) throw new LoginLockLostError();
+        } catch (error) {
+          if (error instanceof LoginLockLostError) throw error;
+          throw new LoginLockUnavailableError(
+            "DM Faster could not verify browser-login lock ownership.",
+            { cause: error },
+          );
+        }
       };
       return {
         assertOwned,
         async release() {
           if (released) return;
           released = true;
-          // Once this lease is stale, a newer process may own the same path.
-          // Never touch it; stale-lock recovery will remove our old directory.
-          if (now() >= metadata.expiresAt) return;
           let current: LoginLockMetadata | null = null;
           try {
             current = parseMetadata(await readFile(join(lockPath, METADATA_FILE), "utf8"));
           } catch (error) {
-            if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
-            throw error;
+            if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
           }
-          if (current?.ownerId !== ownerId) return;
-          await rm(lockPath, { recursive: true, force: true });
+          if (current?.ownerId === ownerId && current.leaseId === leaseId) {
+            await input.onReleaseValidated?.();
+          }
+          // The shared lock directory may have been replaced after validation.
+          // This path is unique to this acquisition, so unlinking it cannot
+          // remove a replacement owner's lease.
+          await removeLeaseFile(ownerLeasePath);
         },
       };
     } catch (error) {
@@ -276,7 +360,7 @@ export async function acquireLoginLock(input: {
 
     let existing;
     try {
-      existing = await readExistingLock({ lockPath, now: now() });
+      existing = await readExistingLock({ root, lockName, lockPath, now: now() });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
       throw new LoginLockUnavailableError(

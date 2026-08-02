@@ -1,13 +1,13 @@
 interface:
   display_name: "DM Faster"
-  short_description: "Inspect live DM Faster workspaces read-only"
-  default_prompt: "Use $dmfaster to inspect my DM Faster workspace and recommend the next safe action."
+  short_description: "Plan and operate DM Faster campaigns safely"
+  default_prompt: "Use $dmfaster to inspect my workspace, plan the campaign, preview its exact audience, and take only the actions I explicitly approve."
 
 dependencies:
   tools:
     - type: "mcp"
       value: "dmfaster"
-      description: "Official read-only DM Faster MCP server"
+      description: "Official DM Faster Agent 1.0 MCP server"
       transport: "stdio"
 
 policy:
