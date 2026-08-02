@@ -36,8 +36,12 @@ passes:
    `eemelidevii/dmfaster-agents`, `agent-packages-release.yml`, the
    `npm-packages` environment, and the `npm publish` action.
 
-Configure both GitHub publishing environments with a required independent
-reviewer, prevent self-review, and restrict deployment to protected `main`.
+Restrict both GitHub publishing environments to `main`. For a sole-owner
+repository, keep the exact workflow confirmation, immutable source ref,
+environment-scoped credential, and provenance checks as the release gate; do
+not create a nominal second account solely to approve the owner's release. If
+another maintainer is granted repository access, add that maintainer as the
+required reviewer and prevent self-review for both publishing environments.
 
 ## Later releases
 
