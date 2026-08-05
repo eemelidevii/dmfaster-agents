@@ -33,9 +33,9 @@
     "check:agents": "npm run check:agent-api && npm run check:agent-skill && npm run check:agent-plugin && npm run build:agents && npm run check:agent-packages && npm run test:agent-packages:install && npm run typecheck:agents && npm run test:agents"
   },
   "devDependencies": {
-    "@types/node": "24.13.3",
+    "@types/node": "26.1.2",
     "openapi-typescript": "7.13.0",
-    "typescript": "5.9.3"
+    "typescript": "7.0.2"
   },
   "overrides": {
     "brace-expansion": "5.0.8"
