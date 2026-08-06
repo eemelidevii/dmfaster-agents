@@ -37,6 +37,63 @@ if (packageVersions.size !== 1 || packageVersions.has(undefined)) {
   fail("all four agent packages must use one exact version");
 }
 const [releaseVersion] = packageVersions;
+const expectedPackage = `@dmfaster/mcp-server@${releaseVersion}`;
+
+const portableManifest = readJson("plugins/dmfaster/plugin.json");
+const portableMcp = readJson("plugins/dmfaster/mcp.json");
+const portablePluginSchema = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json";
+const portableMcpSchema = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json";
+
+const portableManifestAllowedKeys = new Set([
+  "$schema",
+  "name",
+  "version",
+  "description",
+  "author",
+  "homepage",
+  "repository",
+  "license",
+  "keywords",
+  "extensions",
+]);
+for (const key of Object.keys(portableManifest)) {
+  if (!portableManifestAllowedKeys.has(key)) {
+    fail(`Agent Plugins manifest contains unsupported property ${key}`);
+  }
+}
+if (portableManifest.$schema !== portablePluginSchema) {
+  fail("Agent Plugins manifest must target the 1.0.0 plugin schema");
+}
+if (portableManifest.name !== "dmfaster") fail("Agent Plugins manifest name must be dmfaster");
+if (portableManifest.version !== releaseVersion) {
+  fail("Agent Plugins manifest version must match agent packages");
+}
+if (portableManifest.license !== "Apache-2.0") {
+  fail("Agent Plugins manifest must declare Apache-2.0");
+}
+if (portableManifest.repository !== "https://github.com/eemelidevii/dmfaster-agents") {
+  fail("Agent Plugins manifest must link to the approved public agent source");
+}
+if (JSON.stringify(portableManifest.author) !== JSON.stringify({
+  name: "DM Faster",
+  url: "https://dmfaster.com",
+})) {
+  fail("Agent Plugins manifest author must match the canonical DM Faster metadata");
+}
+
+const expectedPortableMcp = {
+  $schema: portableMcpSchema,
+  mcpServers: {
+    dmfaster: {
+      type: "stdio",
+      command: "npx",
+      args: ["--yes", expectedPackage],
+    },
+  },
+};
+if (JSON.stringify(portableMcp) !== JSON.stringify(expectedPortableMcp)) {
+  fail("Agent Plugins mcp.json must use the version-pinned stdio MCP server");
+}
 
 const codexManifest = readJson("plugins/dmfaster/.codex-plugin/plugin.json");
 const claudeManifest = readJson("plugins/dmfaster/.claude-plugin/plugin.json");
@@ -122,7 +179,6 @@ if (!cursorLogo.startsWith(`${pluginRoot}${path.sep}`) || !existsSync(cursorLogo
   fail("Cursor manifest logo must resolve inside the plugin directory");
 }
 
-const expectedPackage = `@dmfaster/mcp-server@${releaseVersion}`;
 const sharedServer = sharedMcp.mcpServers?.dmfaster;
 const expectedMcpConfig = {
   mcpServers: {
@@ -156,6 +212,8 @@ const requiredFiles = [
   ".codex-plugin/plugin.json",
   ".claude-plugin/plugin.json",
   ".cursor-plugin/plugin.json",
+  "plugin.json",
+  "mcp.json",
   "assets/dm-icon.png",
   "skills/dmfaster/SKILL.md",
   "skills/dmfaster/agents/openai.yaml",
@@ -219,6 +277,7 @@ const versionPinnedFiles = [
   "packages/cli/README.md",
   "packages/mcp-server/README.md",
   "plugins/dmfaster/README.md",
+  "plugins/dmfaster/mcp.json",
   "plugins/dmfaster/skills/dmfaster/references/authentication.md",
   "plugins/dmfaster/skills/dmfaster/references/tools.md",
 ];
@@ -234,5 +293,5 @@ for (const relativePath of versionPinnedFiles) {
 }
 
 if (!process.exitCode) {
-  process.stdout.write(`DM Faster Codex, Claude, and Cursor plugin structure is valid for ${releaseVersion}.\n`);
+  process.stdout.write(`DM Faster Agent Plugins, Codex, Claude, and Cursor plugin structure is valid for ${releaseVersion}.\n`);
 }

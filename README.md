@@ -10,6 +10,10 @@ This repository is the public source for
 - a portable MCP Apps campaign workspace built from DM Faster's product UI;
 - the shared Codex, Claude, and Cursor plugin and skill.
 
+The shared plugin also includes portable Agent Plugins 1.0.0 root
+`plugin.json` and `mcp.json` files, while retaining host-specific manifests for
+clients that have not adopted the portable package format yet.
+
 Agent 1.0 exposes 16 bounded domain tools. It can inspect a live workspace,
 resolve industries, validate complete campaign plans, preview exact audiences,
 prepare private lists and disabled campaign drafts idempotently, and launch or
