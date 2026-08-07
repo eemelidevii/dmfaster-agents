@@ -1,7 +1,9 @@
 # DM Faster Agent 1.0 plugin
 
-This multi-host plugin bundles the canonical DM Faster skill and a
-version-pinned local stdio MCP 2026-07-28 server definition. Hosts that have not
+This plugin bundles the canonical DM Faster skill and a version-pinned local
+stdio MCP 2026-07-28 server definition. It includes the portable Agent Plugins
+1.0 package files at the plugin root, alongside host-specific manifests for
+Codex, Claude, and Cursor. Hosts that have not
 implemented that revision use the same skill through the version-pinned CLI.
 
 Agent 1.0 exposes 16 bounded domain tools plus an optional portable MCP Apps
@@ -58,6 +60,8 @@ approval; login permission alone never authorizes either action.
 
 ## Development validation
 
+- Portable Agent Plugins manifest: `plugin.json`
+- Portable Agent Plugins MCP config: `mcp.json`
 - Codex manifest: `.codex-plugin/plugin.json`
 - Shared MCP map: `.mcp.json`
 - Claude manifest: `.claude-plugin/plugin.json`
